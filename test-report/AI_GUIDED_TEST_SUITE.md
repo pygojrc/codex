@@ -22,7 +22,7 @@ npm view @mmmbuto/codex-cli-termux dist-tags --json
 ```
 
 PASS requires both commands to report the candidate version (currently
-`0.136.0`) and npm `next` to point to it. `latest` stays on `0.135.0` until the
+`0.139.0`) and npm `next` to point to it. `latest` stays on `0.138.0` until the
 candidate is promoted.
 
 ## 2. Command And Wrapper Surface
@@ -63,7 +63,7 @@ HTTP status line or a clearly classified environmental network failure.
 
 ## 3.1 Code-mode `exec` / `wait` (Android V8 restore)
 
-On `0.136.0` the Android build runs real code-mode via the in-process V8
+On `0.139.0` the Android build runs real code-mode via the in-process V8
 runtime (previously a no-op stub). This case exercises the `exec` (start) and
 `wait` (await a still-running command) path, which only works when V8 is
 actually linked and functional on the device.
@@ -100,7 +100,7 @@ Android ELFs to resolve sibling libraries with `RUNPATH=$ORIGIN`.
 Create one report per candidate:
 
 ```text
-test-report/CODEX_TEST_REPORT_v0.136.0_run_YYYYMMDD-HHMM.md
+test-report/CODEX_TEST_REPORT_v0.139.0_run_YYYYMMDD-HHMM.md
 ```
 
 Include:
