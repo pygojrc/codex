@@ -2,6 +2,10 @@ name: release-cx
 
 on:
   push:
+    branches:
+      - cx_dev
+    paths:
+      - ".github/workflows/release-cx.trigger"
     tags:
       - "cx-v*"
   workflow_dispatch:
