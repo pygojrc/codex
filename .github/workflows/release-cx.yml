@@ -19,104 +19,55 @@ concurrency:
 
 jobs:
   build:
-    name: Build ${{ matrix.package }}
-    runs-on: ${{ matrix.runner }}
+    name: Build cx-linux-x86_64-gnu
+    runs-on: ubuntu-latest
     timeout-minutes: 90
-
     defaults:
       run:
         working-directory: codex-rs
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # 阶段 1：Ubuntu x86_64 GNU
-          - target: x86_64-unknown-linux-gnu
-            runner: ubuntu-latest
-            package: cx-linux-x86_64-gnu
-            libc: gnu
-
-          # 阶段 2：Linux aarch64 GNU
-          - target: aarch64-unknown-linux-gnu
-            runner: ubuntu-24.04-arm
-            package: cx-linux-aarch64-gnu
-            libc: gnu
-
-          # 阶段 3：musl 静态包
-          - target: x86_64-unknown-linux-musl
-            runner: ubuntu-latest
-            package: cx-linux-x86_64-musl
-            libc: musl
-          - target: aarch64-unknown-linux-musl
-            runner: ubuntu-24.04-arm
-            package: cx-linux-aarch64-musl
-            libc: musl
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install system deps
+      - name: Install deps
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            binutils \
-            cmake \
-            libcap-dev \
-            libssl-dev \
-            perl \
-            pkg-config \
-            zstd
-
-          if [[ "${{ matrix.libc }}" == "musl" ]]; then
-            sudo apt-get install -y --no-install-recommends musl-tools
-          fi
+          sudo apt-get install -y --no-install-recommends build-essential cmake libssl-dev perl pkg-config zstd
 
       - name: Setup Rust
         shell: bash
         run: |
           set -euo pipefail
-          rustup toolchain install 1.95.0 --profile minimal --target "${{ matrix.target }}"
-          rustup default 1.95.0
-          rustup show
-          rustc -V
-          cargo -V
+          rustup toolchain install 1.95.0 --profile minimal --target x86_64-unknown-linux-gnu
+          rustc +1.95.0 -V
+          cargo +1.95.0 -V
 
-      - name: Build codex and rename to cx
+      - name: Build
         shell: bash
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-          AWS_LC_SYS_NO_JITTER_ENTROPY: "1"
-          CC_x86_64_unknown_linux_musl: musl-gcc
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
-          CC_aarch64_unknown_linux_musl: musl-gcc
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
         run: |
           set -euo pipefail
-          cargo +1.95.0 build --release --locked --target "${{ matrix.target }}" --bin codex
-
-          mkdir -p "dist/${{ matrix.package }}"
-          cp "target/${{ matrix.target }}/release/codex" "dist/${{ matrix.package }}/cx"
-          chmod 0755 "dist/${{ matrix.package }}/cx"
+          cargo +1.95.0 build --release --locked --target x86_64-unknown-linux-gnu --bin codex
+          mkdir -p dist/cx-linux-x86_64-gnu
+          cp target/x86_64-unknown-linux-gnu/release/codex dist/cx-linux-x86_64-gnu/cx
+          chmod 0755 dist/cx-linux-x86_64-gnu/cx
 
       - name: Package
         shell: bash
         run: |
           set -euo pipefail
-          tar -C "dist/${{ matrix.package }}" -czf "dist/${{ matrix.package }}.tar.gz" cx
-          sha256sum "dist/${{ matrix.package }}.tar.gz" > "dist/${{ matrix.package }}.tar.gz.sha256"
+          tar -C dist/cx-linux-x86_64-gnu -czf dist/cx-linux-x86_64-gnu.tar.gz cx
+          sha256sum dist/cx-linux-x86_64-gnu.tar.gz > dist/cx-linux-x86_64-gnu.tar.gz.sha256
 
-      - name: Upload build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.package }}
+          name: cx-linux-x86_64-gnu
           path: |
-            codex-rs/dist/${{ matrix.package }}.tar.gz
-            codex-rs/dist/${{ matrix.package }}.tar.gz.sha256
+            codex-rs/dist/cx-linux-x86_64-gnu.tar.gz
+            codex-rs/dist/cx-linux-x86_64-gnu.tar.gz.sha256
 
   release:
     name: Publish release
@@ -124,16 +75,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('cx-dev-{0}', github.run_number) }}
           name: ${{ github.ref_type == 'tag' && github.ref_name || format('cx dev build {0}', github.run_number) }}
