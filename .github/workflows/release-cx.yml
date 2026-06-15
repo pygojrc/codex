@@ -77,10 +77,14 @@ jobs:
           fi
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.95.0
-          targets: ${{ matrix.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --target "${{ matrix.target }}"
+          rustup default 1.95.0
+          rustup show
+          rustc -V
+          cargo -V
 
       - name: Build codex and rename to cx
         shell: bash
@@ -93,7 +97,7 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
         run: |
           set -euo pipefail
-          cargo build --release --locked --target "${{ matrix.target }}" --bin codex
+          cargo +1.95.0 build --release --locked --target "${{ matrix.target }}" --bin codex
 
           mkdir -p "dist/${{ matrix.package }}"
           cp "target/${{ matrix.target }}/release/codex" "dist/${{ matrix.package }}/cx"
