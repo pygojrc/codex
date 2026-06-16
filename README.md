@@ -50,7 +50,7 @@ What this fork does not do:
 - packaged wrappers preserve `CODEX_SELF_EXE`, sanitize `LD_LIBRARY_PATH`, and bundle `libc++_shared.so`
 - Android binaries are linked with `RUNPATH=$ORIGIN`
 - `exec`/code-mode now runs for real on Android via the in-process V8 runtime (no longer a stub) — the meaningful capability gain on Termux
-- realtime voice/audio builds for Android but is not usable in Termux CLI (the cpal/oboe backend needs an Android JavaVM/Activity that Termux CLI lacks); the experimental `/realtime` and `/settings` commands cannot open an audio device there. The backend is intentionally left unchanged; Termux-native audio is tracked on the Codex VL roadmap.
+- realtime voice/audio is no longer part of this build: upstream removed the TUI realtime voice feature (openai/codex#27801), so the fork's Android cpal/oboe enablement toggle (never usable from the Termux CLI anyway, as the backend needs an Android JavaVM/Activity) was dropped with it. Termux-native audio remains tracked on the Codex VL roadmap.
 - Android PTY and lock-handling compatibility patches remain enabled where upstream behavior still breaks on Bionic/Termux
 
 ## Releases and Updates
@@ -77,6 +77,27 @@ Maintainer publish flow:
 - [Install docs](./docs/install.md)
 - [Authentication](./docs/authentication.md)
 - [Configuration](./docs/config.md)
+
+## Security
+
+This is a community fork of OpenAI Codex. Security-relevant properties of this build:
+
+- **Network**: agents bind to loopback by default; nothing is exposed externally unless you opt in.
+- **Supply chain**: builds and releases come only from fork-owned CI and the `@mmmbuto/...` npm
+  scope. This package does not silently fetch or run the upstream installer; updates flow through
+  the fork's own channel.
+- **Termux**: TLS trust uses bundled webpki roots (no Android platform-verifier dependency), and
+  advisory file locks degrade safely on filesystems that don't support them.
+
+For sensitive work, prefer the official Codex CLI on Linux/macOS over SSH.
+
+To report a vulnerability, see [SECURITY.md](./SECURITY.md).
+
+## Community guides
+
+- [OpenAI Codex CLI on Android via Termux](https://timharbakon.com/openai-codex-cli-android-termux/)
+  — independent third-party walkthrough covering Termux setup, the Bionic-libc incompatibility
+  this package solves, and a small Hono test project.
 
 ## License
 

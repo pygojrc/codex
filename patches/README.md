@@ -54,28 +54,17 @@ required to publish a working Android Termux package.
 - Adds `-Wl,-rpath,$ORIGIN` so packaged Android ELFs can resolve sibling
   `libc++_shared.so` even without wrapper-provided `LD_LIBRARY_PATH`.
 
-### Patch #11 - Android realtime audio: builds, but not usable in Termux CLI
-- Files: `codex-rs/tui/Cargo.toml`, `codex-rs/tui/src/*`, `codex-rs/cli/Cargo.toml`, `codex-rs/cloud-tasks/Cargo.toml`
-- The `voice` and `audio_device` modules are aligned with upstream
-  (`cfg(not(target_os = "linux"))`) so the native Android build **compiles and
-  links** the realtime audio path. The compile/link fix below is required for
-  that.
-- **Known runtime limitation (intentional, not fixed here)**: the audio backend
-  (cpal → oboe → `ndk-context`) needs an Android `JavaVM`/`Activity` to
-  initialize. A plain Termux CLI process has neither, so opening an audio device
-  panics (`android context was not initialized`). The experimental
-  `/realtime` and `/settings` commands therefore do not work under Termux; the
-  feature is off by default. **This fork does not modify the audio backend** —
-  changing it (PulseAudio / `termux-api`) is outside the upstream+patch fork
-  narrative and is tracked on the Codex VL roadmap instead.
-- **Android cpal link fix** (needed to build at all): upstream ships
-  `cpal = "0.15"` on `cfg(not(target_os = "linux"))`, but on Android
-  `cpal -> oboe-sys` links `c++_static`, which Termux does not provide (only
-  `libc++_shared.so`). We add an Android-specific
-  `cpal = { features = ["oboe-shared-stdcxx"] }` so oboe links `c++_shared`,
-  matching the bundled `libc++_shared.so` + `RUNPATH=$ORIGIN` (Patch #10/#10b).
-  Fix source: upstream issue
-  [openai/codex#24507](https://github.com/openai/codex/issues/24507).
+### Patch #11 - Android realtime audio (RETIRED at rust-v0.140.0-alpha.18)
+- **Retired**: upstream removed the entire TUI realtime voice feature in
+  [openai/codex#27801](https://github.com/openai/codex/pull/27801) (deleted
+  `chatwidget/realtime.rs`, the WebRTC/audio events, and the `/realtime`
+  `/settings` audio commands). This fork's contribution was only a 4-line cfg
+  toggle plus an Android `cpal`/`oboe-shared-stdcxx` link fix on top of that
+  upstream feature — with the feature gone, the toggle had nothing left to gate
+  and was dropped with it (the `cpal`/`oboe` Android dependency is no longer
+  pulled in). The path was never usable from a plain Termux CLI process anyway
+  (the audio backend needs an Android `JavaVM`/`Activity`). Termux-native audio
+  is tracked on the Codex VL roadmap. `verify-patches.sh` no longer checks #11.
 
 ### Patch #12 - Dynamic npm wrapper routing
 - File: `npm-package/bin/codex.js`
@@ -144,11 +133,12 @@ required to publish a working Android Termux package.
      produce master/slave fds compatible with the upstream pty handling.
 
 ### Patch #19 - Android UI cfg gates
-- Files: `codex-rs/tui/src/clipboard_paste.rs`, `codex-rs/tui/src/app_event.rs`
+- Files: `codex-rs/tui/src/clipboard_paste.rs`
 - Adds `#[cfg(not(target_os = "android"))]` around clipboard paste paths that
   depend on platform clipboard primitives unavailable on Termux, so the
-  no-clipboard build configuration links cleanly. (Realtime audio/voice is no
-  longer gated off on Android — see Patch #11.)
+  no-clipboard build configuration links cleanly. (The former `app_event.rs`
+  android cfg gate belonged to the realtime audio event retired with Patch #11
+  / openai/codex#27801.)
 
 ### Patch #20 - Android code-mode (real, upstream-aligned)
 - Files: `codex-rs/code-mode/src/lib.rs`, `codex-rs/code-mode/Cargo.toml`

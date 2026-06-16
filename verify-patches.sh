@@ -66,21 +66,12 @@ else
   fail
 fi
 
-printf "Patch #11 (Android Realtime Audio + oboe-shared-stdcxx): "
-# 0.136.0: the no-voice Android policy was reverted. Realtime audio/voice is
-# aligned with upstream (audio_device + voice modules on cfg(not(linux)), stub
-# stays on Linux). On Android, cpal carries the oboe-shared-stdcxx feature so
-# oboe-sys links c++_shared (not c++_static, absent on Termux) — upstream
-# openai/codex#24507.
-if grep -Fq '#[cfg(not(target_os = "linux"))]' codex-rs/tui/src/lib.rs \
-  && grep -q 'voice input is unavailable in this build' codex-rs/tui/src/lib.rs \
-  && grep -Fq "[target.'cfg(target_os = \"android\")'.dependencies]" codex-rs/tui/Cargo.toml \
-  && grep -Fq 'oboe-shared-stdcxx' codex-rs/tui/Cargo.toml \
-  && grep -Fq 'cpal = "0.15"' codex-rs/tui/Cargo.toml; then
-  pass
-else
-  fail
-fi
+# Patch #11 (Android Realtime Audio + oboe-shared-stdcxx) RETIRED at
+# rust-v0.140.0-alpha.18: upstream removed the entire TUI realtime voice feature
+# (openai/codex#27801), so the fork's cpal/oboe Android enablement toggle had
+# nothing left to gate and was dropped with it. The feature was never usable from
+# the Termux CLI anyway (needs an Android JavaVM/Activity). Termux-native audio is
+# tracked on the Codex VL roadmap.
 
 printf "Patch #12 (Dynamic Subcommand Routing): "
 if grep -q 'detectSubcommands' npm-package/bin/codex.js \
@@ -178,8 +169,10 @@ else
 fi
 
 printf "Patch #19 (Android UI cfg Gates): "
-if grep -q 'cfg(not(target_os = "android"))' codex-rs/tui/src/clipboard_paste.rs \
-  && grep -q 'target_os = "android"' codex-rs/tui/src/app_event.rs; then
+# The app_event.rs android cfg gate was attached to the realtime audio event
+# retired with upstream openai/codex#27801 (see Patch #11 note); the clipboard
+# paste android gate is the remaining fork UI cfg surface.
+if grep -q 'cfg(not(target_os = "android"))' codex-rs/tui/src/clipboard_paste.rs; then
   pass
 else
   fail
