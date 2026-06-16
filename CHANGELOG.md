@@ -1,3 +1,29 @@
+# [0.140.0] - 2026-06-16
+
+Synced the Termux fork to upstream OpenAI Codex `rust-v0.140.0`. Validated
+on device (AI-guided surface report, PASS) and promoted to npm `latest`;
+the `stable` dist-tag stays on `0.135.0`.
+
+## Changed
+- Synced the Termux fork to upstream OpenAI Codex `rust-v0.140.0`.
+- Preserved the full Android/Termux runtime delta, including Patch #24
+  (Termux TLS roots, no rustls-platform-verifier panic) and real code-mode
+  on Android via the in-process V8 runtime.
+- Bumped npm package and Cargo workspace versions to `0.140.0`.
+
+# [0.139.0] - 2026-06-11
+
+Synced the Termux fork to upstream OpenAI Codex `rust-v0.139.0`. Validated
+on device (AI-guided surface report, PASS) and promoted to npm `latest`;
+the `stable` dist-tag stays on `0.135.0`.
+
+## Changed
+- Synced the Termux fork to upstream OpenAI Codex `rust-v0.139.0`.
+- Preserved the full Android/Termux runtime delta, including Patch #24
+  (Termux TLS roots, no rustls-platform-verifier panic) and real code-mode
+  on Android via the in-process V8 runtime.
+- Bumped npm package and Cargo workspace versions to `0.139.0`.
+
 # [0.138.0] - 2026-06-09
 
 Synced the Termux fork to upstream OpenAI Codex `rust-v0.138.0`. Validated
