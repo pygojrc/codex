@@ -32,6 +32,14 @@ jobs:
       contents: write
     env:
       ANDROID_NDK_VERSION: "28.2.13676358"
+      # Match codex-vl release packaging so the npm tarball stays under the
+      # registry's unpacked-size limit (~512 MiB). Default release profile
+      # produced ~520 MiB and was rejected with HTTP 413 Payload Too Large.
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: "3"
+      CARGO_PROFILE_RELEASE_LTO: "thin"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+      CARGO_PROFILE_RELEASE_PANIC: "abort"
+      CARGO_PROFILE_RELEASE_STRIP: "symbols"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,6 +107,11 @@ jobs:
           cp codex-rs/target/aarch64-linux-android/release/codex npm-package/bin/codex.bin
           cp codex-rs/target/aarch64-linux-android/release/codex-exec npm-package/bin/codex-exec.bin
           cp "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" npm-package/bin/libc++_shared.so
+          # Strip native binaries and libc++ to match codex-vl packaging and stay
+          # under npm's unpacked-size limit (~512 MiB). Without this the tarball is
+          # rejected with HTTP 413 Payload Too Large.
+          export PATH="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
+          llvm-strip --strip-all npm-package/bin/codex.bin npm-package/bin/codex-exec.bin npm-package/bin/libc++_shared.so
           chmod +x npm-package/bin/codex npm-package/bin/codex-exec npm-package/bin/codex.bin npm-package/bin/codex-exec.bin npm-package/bin/libc++_shared.so
           bash verify-patches.sh
           cd npm-package
