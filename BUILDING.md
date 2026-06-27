@@ -19,14 +19,13 @@ pkg install git clang lld rust pkg-config openssl openssl-tool nodejs-lts -y
 
 git clone https://github.com/DioNanos/codex-termux.git
 cd codex-termux/codex-rs
-cargo build --release -p codex-cli -p codex-exec
+cargo build --release -p codex-cli
 ```
 
 Expected outputs:
 
 ```bash
 codex-rs/target/release/codex
-codex-rs/target/release/codex-exec
 ```
 
 ## Linux-host Android cross-build
@@ -50,14 +49,13 @@ python3 scripts/fetch_rusty_v8_android.py
 eval "$(python3 scripts/fetch_rusty_v8_android.py | grep '^export ' | sed 's/^export //')"
 
 cd codex-rs
-rustup run 1.93.0 cargo build --target aarch64-linux-android --release -p codex-cli -p codex-exec
+rustup run 1.93.0 cargo build --target aarch64-linux-android --release -p codex-cli
 ```
 
 Expected outputs:
 
 ```bash
 codex-rs/target/aarch64-linux-android/release/codex
-codex-rs/target/aarch64-linux-android/release/codex-exec
 ```
 
 Notes:
@@ -74,9 +72,8 @@ To test the npm wrapper layout locally after a successful cross-build:
 ```bash
 cd npm-package
 cp ../codex-rs/target/aarch64-linux-android/release/codex bin/codex.bin
-cp ../codex-rs/target/aarch64-linux-android/release/codex-exec bin/codex-exec.bin
 cp "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" bin/libc++_shared.so
-chmod +x bin/codex bin/codex-exec bin/codex.bin bin/codex-exec.bin bin/libc++_shared.so
+chmod +x bin/codex bin/codex-exec bin/codex.bin bin/libc++_shared.so
 node ./bin/codex.js --version
 node ./bin/codex.js --help >/dev/null
 ```

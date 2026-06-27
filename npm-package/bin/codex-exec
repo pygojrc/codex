@@ -32,7 +32,12 @@ sanitize_ld_library_path() {
 }
 
 export CODEX_MANAGED_BY_NPM=1
-export CODEX_SELF_EXE="$SCRIPT_DIR/codex-exec"
+export CODEX_SELF_EXE="$SCRIPT_DIR/codex"
 export LD_LIBRARY_PATH="$(sanitize_ld_library_path)"
 
-exec "$SCRIPT_DIR/codex-exec.bin" "$@"
+# Dispatch the single bundled `codex` binary with the `exec` subcommand instead
+# of shipping a standalone `codex-exec.bin`. The `exec` subcommand uses the same
+# ExecCli, so behavior is identical while the package drops one V8-linked binary
+# (~150 MB). The absolute "$SCRIPT_DIR/codex.bin" path preserves the launcher
+# hardening: always run the bundled binary, never a PATH lookup.
+exec "$SCRIPT_DIR/codex.bin" exec "$@"

@@ -41,8 +41,12 @@ else
 fi
 
 printf "Patch #10 (Launcher Hardening): "
+# Both launchers must exec the BUNDLED binary via the absolute "$SCRIPT_DIR"
+# path, never a bare name resolved through PATH. The standalone codex-exec.bin
+# was dropped, so the codex-exec wrapper now dispatches codex.bin with the exec
+# subcommand; the hardening property is preserved, just re-pointed.
 if grep -q 'exec "\$SCRIPT_DIR/codex.bin"' npm-package/bin/codex \
-  && grep -q 'exec "\$SCRIPT_DIR/codex-exec.bin"' npm-package/bin/codex-exec \
+  && grep -q 'exec "\$SCRIPT_DIR/codex.bin" exec' npm-package/bin/codex-exec \
   && grep -q 'CODEX_SELF_EXE' npm-package/bin/codex.js \
   && grep -q '"bin/codex.bin"' npm-package/package.json; then
   pass
@@ -52,9 +56,8 @@ fi
 
 printf "Patch #10b (Android ELF Runpath): "
 if grep -q 'link-arg=-Wl,-rpath,$ORIGIN' codex-rs/.cargo/config.toml; then
-  if [ -x npm-package/bin/codex.bin ] && [ -x npm-package/bin/codex-exec.bin ] && [ -n "$READELF_BIN" ]; then
-    if "$READELF_BIN" -d npm-package/bin/codex.bin | grep -Eq '(RUNPATH|RPATH).*\$ORIGIN' \
-      && "$READELF_BIN" -d npm-package/bin/codex-exec.bin | grep -Eq '(RUNPATH|RPATH).*\$ORIGIN'; then
+  if [ -x npm-package/bin/codex.bin ] && [ -n "$READELF_BIN" ]; then
+    if "$READELF_BIN" -d npm-package/bin/codex.bin | grep -Eq '(RUNPATH|RPATH).*\$ORIGIN'; then
       pass
     else
       fail

@@ -98,21 +98,20 @@ jobs:
           echo "linking compiler-rt builtins: ${builtins}"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-Clink-arg=-lc++_shared -Clink-arg=-Wl,-rpath,\$ORIGIN -Clink-arg=${builtins}"
           cd codex-rs
-          rustup run 1.95.0 cargo build --target aarch64-linux-android --release -p codex-cli -p codex-exec
+          rustup run 1.95.0 cargo build --target aarch64-linux-android --release -p codex-cli
 
       - name: Package
         shell: bash
         run: |
           set -euo pipefail
           cp codex-rs/target/aarch64-linux-android/release/codex npm-package/bin/codex.bin
-          cp codex-rs/target/aarch64-linux-android/release/codex-exec npm-package/bin/codex-exec.bin
           cp "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" npm-package/bin/libc++_shared.so
           # Strip native binaries and libc++ to match codex-vl packaging and stay
           # under npm's unpacked-size limit (~512 MiB). Without this the tarball is
           # rejected with HTTP 413 Payload Too Large.
           export PATH="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
-          llvm-strip --strip-all npm-package/bin/codex.bin npm-package/bin/codex-exec.bin npm-package/bin/libc++_shared.so
-          chmod +x npm-package/bin/codex npm-package/bin/codex-exec npm-package/bin/codex.bin npm-package/bin/codex-exec.bin npm-package/bin/libc++_shared.so
+          llvm-strip --strip-all npm-package/bin/codex.bin npm-package/bin/libc++_shared.so
+          chmod +x npm-package/bin/codex npm-package/bin/codex-exec npm-package/bin/codex.bin npm-package/bin/libc++_shared.so
           bash verify-patches.sh
           cd npm-package
           rm -f ./*.tgz
