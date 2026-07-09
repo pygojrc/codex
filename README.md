@@ -17,7 +17,7 @@
 ```bash
 pkg update && pkg upgrade -y
 pkg install nodejs-lts -y
-npm install -g @mmmbuto/codex-cli-termux@latest
+npm install -g @mmmbuto/codex-cli-termux@next
 codex --version
 codex login
 ```
@@ -56,14 +56,14 @@ What this fork does not do:
 ## Releases and Updates
 
 - Latest GitHub release: [releases/latest](https://github.com/DioNanos/codex-termux/releases/latest)
-- Upstream base: OpenAI Codex `rust-v0.142.0`, packaged as `0.142.0` (npm `latest`). The `stable` dist-tag stays on `0.140.0` for conservative installs.
+- Upstream base: OpenAI Codex `rust-v0.143.0`, packaged as `0.143.0` on npm `next`. The `latest` dist-tag remains on `0.142.5` until a separate promotion; `stable` stays on `0.140.0` for conservative installs.
 - npm package: [`@mmmbuto/codex-cli-termux`](https://www.npmjs.com/package/@mmmbuto/codex-cli-termux)
 - Legacy `@mmmbuto/codex-cli-lts` (OpenAI Codex 0.80.x) is archived; current builds live in this package or in [`@mmmbuto/codex-vl`](https://www.npmjs.com/package/@mmmbuto/codex-vl) (multi-platform).
 
 Maintainer publish flow:
 
 - land validated changes on `develop`
-- publish the tested npm package to `latest`
+- publish the tested npm package to `next`
 - promote the tested commit to clean GitHub `main`
 - publish the GitHub release from `main`
 - add post-release Termux validation reports after device testing
@@ -73,7 +73,7 @@ Maintainer publish flow:
 - [Changelog](./CHANGELOG.md)
 - [Patch inventory](./patches/README.md)
 - [Building from source](./BUILDING.md)
-- Latest runtime validation report: [v0.140.0 Termux device validation](./test-report/CODEX_TEST_REPORT_v0.140.0_run_20260616-2013.md)
+- Latest runtime validation report: 0.143.0 next validation pending; previous report [v0.142.0 Termux device validation](./test-report/CODEX_TEST_REPORT_v0.142.0_run_20260623-2007.md)
 - [Install docs](./docs/install.md)
 - [Authentication](./docs/authentication.md)
 - [Configuration](./docs/config.md)

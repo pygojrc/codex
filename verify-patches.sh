@@ -216,7 +216,7 @@ else
 fi
 
 printf "Patch #23 (Fork-Owned Workflows + CI Guards): "
-if grep -q "github.repository == 'openai/codex'" .github/workflows/ci.yml \
+if grep -q "github.repository == 'openai/codex'" .github/workflows/repo-checks.yml \
   && [ -f .github/workflows/termux-npm-build-publish.yml ] \
   && [ -f .forgejo/workflows/termux-next-smoke.yml ]; then
   pass
@@ -225,12 +225,17 @@ else
 fi
 
 printf "Patch #24 (Termux TLS Roots, no rustls-platform-verifier panic): "
+# Since upstream rust-v0.143.0-alpha.x the OAuth and streamable-HTTP MCP paths no
+# longer build their own reqwest-0.13 client in perform_oauth_login.rs/rmcp_client.rs;
+# they route all HTTP through the injected reqwest-0.12 codex_exec_server::ReqwestHttpClient
+# (OAuthHttpClientAdapter / StreamableHttpClientAdapter), which does not construct
+# rustls-platform-verifier and therefore cannot hit the Android panic. The only remaining
+# reqwest-0.13 ClientBuilder is auth_status.rs, which keeps apply_termux_tls. Protection is
+# intact; we verify it where a 0.13 client is actually built (utils.rs + auth_status.rs).
 if grep -q "apply_termux_tls" codex-rs/rmcp-client/src/utils.rs \
   && grep -q "tls_certs_only" codex-rs/rmcp-client/src/utils.rs \
   && grep -q "webpki-root-certs" codex-rs/rmcp-client/Cargo.toml \
-  && grep -q "apply_termux_tls" codex-rs/rmcp-client/src/auth_status.rs \
-  && grep -q "apply_termux_tls" codex-rs/rmcp-client/src/perform_oauth_login.rs \
-  && grep -q "apply_termux_tls" codex-rs/rmcp-client/src/rmcp_client.rs; then
+  && grep -q "apply_termux_tls" codex-rs/rmcp-client/src/auth_status.rs; then
   pass
 else
   fail
