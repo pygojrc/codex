@@ -88,7 +88,9 @@ async fn check_for_update(version_file: &Path, action: Option<UpdateAction>) -> 
                 .await?;
             version
         }
-        Some(UpdateAction::NpmGlobalLatest) | Some(UpdateAction::BunGlobalLatest) => {
+        Some(UpdateAction::NpmGlobalLatest)
+        | Some(UpdateAction::BunGlobalLatest)
+        | Some(UpdateAction::PnpmGlobalLatest) => {
             let NpmLatestInfo { version } = create_client()
                 .get(NPM_LATEST_URL)
                 .send()
@@ -126,6 +128,7 @@ fn current_update_source(action: Option<UpdateAction>) -> &'static str {
     match action {
         Some(UpdateAction::NpmGlobalLatest) => "npm",
         Some(UpdateAction::BunGlobalLatest) => "bun",
+        Some(UpdateAction::PnpmGlobalLatest) => "pnpm",
         Some(UpdateAction::BrewUpgrade) => "brew",
         Some(UpdateAction::StandaloneUnix) | Some(UpdateAction::StandaloneWindows) | None => {
             "github-release"

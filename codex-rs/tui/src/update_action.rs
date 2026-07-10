@@ -12,6 +12,8 @@ pub enum UpdateAction {
     NpmGlobalLatest,
     /// Update via `bun install -g @mmmbuto/codex-cli-termux@latest`.
     BunGlobalLatest,
+    /// Update via `pnpm add -g @mmmbuto/codex-cli-termux@latest`.
+    PnpmGlobalLatest,
     /// Update via `brew upgrade codex`.
     BrewUpgrade,
     /// Update standalone installs via `npm install -g @mmmbuto/codex-cli-termux@latest`.
@@ -26,6 +28,7 @@ impl UpdateAction {
         match &context.method {
             InstallMethod::Npm => Some(UpdateAction::NpmGlobalLatest),
             InstallMethod::Bun => Some(UpdateAction::BunGlobalLatest),
+            InstallMethod::Pnpm => Some(UpdateAction::PnpmGlobalLatest),
             InstallMethod::Brew => Some(UpdateAction::BrewUpgrade),
             InstallMethod::Standalone { platform, .. } => Some(match platform {
                 StandalonePlatform::Unix => UpdateAction::StandaloneUnix,
@@ -46,7 +49,17 @@ impl UpdateAction {
                 "bun",
                 &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
             ),
-            UpdateAction::BrewUpgrade => ("brew", &["upgrade", "--cask", "codex"]),
+            UpdateAction::PnpmGlobalLatest => (
+                "pnpm",
+                &["add", "-g", "@mmmbuto/codex-cli-termux@latest"],
+            ),
+            // codex-termux fork: no Homebrew cask is shipped, so `brew upgrade
+            // --cask codex` would pull the UPSTREAM openai cask and replace the
+            // fork. Redirect to the supported npm channel, like Standalone*.
+            UpdateAction::BrewUpgrade => (
+                "npm",
+                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
+            ),
             UpdateAction::StandaloneUnix | UpdateAction::StandaloneWindows => (
                 "npm",
                 &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
@@ -99,6 +112,13 @@ mod tests {
                 package_layout: None,
             }),
             Some(UpdateAction::BunGlobalLatest)
+        );
+        assert_eq!(
+            UpdateAction::from_install_context(&InstallContext {
+                method: InstallMethod::Pnpm,
+                package_layout: None,
+            }),
+            Some(UpdateAction::PnpmGlobalLatest)
         );
         assert_eq!(
             UpdateAction::from_install_context(&InstallContext {
