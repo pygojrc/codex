@@ -8,6 +8,27 @@ pass() { echo "✅ PRESENT"; }
 fail() { echo "❌ MISSING!"; exit 1; }
 
 READELF_BIN="${READELF_BIN:-$(command -v llvm-readelf || command -v readelf || true)}"
+PUBLIC_SANITIZED_TREE="${CODEX_PUBLIC_SANITIZED_TREE-0}"
+
+case "$PUBLIC_SANITIZED_TREE" in
+  0|1) ;;
+  *)
+    echo "CODEX_PUBLIC_SANITIZED_TREE must be 0 or 1" >&2
+    exit 1
+    ;;
+esac
+
+fork_workflow_guards_present() {
+  if [ "$PUBLIC_SANITIZED_TREE" = "1" ]; then
+    # Public GitHub trees intentionally omit Forge-only automation. Refuse the
+    # sanitized mode if any .forgejo entry, including a dangling symlink, leaks
+    # into the checked-out tree.
+    [ ! -e .forgejo ] && [ ! -L .forgejo ]
+  else
+    # Forge/develop is the canonical full tree and must retain its smoke gate.
+    [ -f .forgejo/workflows/termux-next-smoke.yml ]
+  fi
+}
 
 printf "Patch #1 (Browser Login): "
 if grep -q "termux-open-url" codex-rs/login/src/server.rs; then
@@ -218,7 +239,7 @@ fi
 printf "Patch #23 (Fork-Owned Workflows + CI Guards): "
 if grep -q "github.repository == 'openai/codex'" .github/workflows/repo-checks.yml \
   && [ -f .github/workflows/termux-npm-build-publish.yml ] \
-  && [ -f .forgejo/workflows/termux-next-smoke.yml ]; then
+  && fork_workflow_guards_present; then
   pass
 else
   fail

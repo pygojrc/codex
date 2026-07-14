@@ -112,7 +112,7 @@ jobs:
           export PATH="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
           llvm-strip --strip-all npm-package/bin/codex.bin npm-package/bin/libc++_shared.so
           chmod +x npm-package/bin/codex npm-package/bin/codex-exec npm-package/bin/codex.bin npm-package/bin/libc++_shared.so
-          bash verify-patches.sh
+          CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
           cd npm-package
           rm -f ./*.tgz
           npm pack
