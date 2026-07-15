@@ -36,8 +36,8 @@ pub fn get_upgrade_version(config: &Config) -> Option<String> {
         Some(info) => info.last_checked_at < Utc::now() - Duration::hours(20),
     } {
         // Refresh the cached latest version in the background so TUI startup
-        // isn’t blocked by a network call. The UI reads the previously cached
-        // value (if any) for this run; the next run shows the banner if needed.
+        // is not blocked by a network call. All installation contexts use this
+        // repository's checksum-visible GitHub release channel.
         tokio::spawn(async move {
             check_for_update(&version_file, action)
                 .await
@@ -54,56 +54,16 @@ pub fn get_upgrade_version(config: &Config) -> Option<String> {
     })
 }
 
-// We use the latest version from the cask if installation is via homebrew - homebrew does not immediately pick up the latest release and can lag behind.
-const HOMEBREW_CASK_API_URL: &str = "https://formulae.brew.sh/api/cask/codex.json";
-const LATEST_RELEASE_URL: &str =
-    "https://api.github.com/repos/DioNanos/codex-termux/releases/latest";
-const NPM_LATEST_URL: &str = "https://registry.npmjs.org/@mmmbuto%2fcodex-cli-termux/latest";
+const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/pygojrc/codex/releases/latest";
 
 #[derive(Deserialize, Debug, Clone)]
 struct ReleaseInfo {
     tag_name: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct HomebrewCaskInfo {
-    version: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct NpmLatestInfo {
-    version: String,
-}
-
 async fn check_for_update(version_file: &Path, action: Option<UpdateAction>) -> anyhow::Result<()> {
     let source = current_update_source(action);
-    let latest_version = match action {
-        Some(UpdateAction::BrewUpgrade) => {
-            let HomebrewCaskInfo { version } = create_client()
-                .get(HOMEBREW_CASK_API_URL)
-                .send()
-                .await?
-                .error_for_status()?
-                .json::<HomebrewCaskInfo>()
-                .await?;
-            version
-        }
-        Some(UpdateAction::NpmGlobalLatest)
-        | Some(UpdateAction::BunGlobalLatest)
-        | Some(UpdateAction::PnpmGlobalLatest) => {
-            let NpmLatestInfo { version } = create_client()
-                .get(NPM_LATEST_URL)
-                .send()
-                .await?
-                .error_for_status()?
-                .json::<NpmLatestInfo>()
-                .await?;
-            version
-        }
-        Some(UpdateAction::StandaloneUnix) | Some(UpdateAction::StandaloneWindows) | None => {
-            fetch_latest_github_release_version().await?
-        }
-    };
+    let latest_version = fetch_latest_github_release_version().await?;
 
     // Preserve any previously dismissed version if present.
     let prev_info = read_version_info(version_file).ok();
@@ -124,16 +84,8 @@ async fn check_for_update(version_file: &Path, action: Option<UpdateAction>) -> 
     Ok(())
 }
 
-fn current_update_source(action: Option<UpdateAction>) -> &'static str {
-    match action {
-        Some(UpdateAction::NpmGlobalLatest) => "npm",
-        Some(UpdateAction::BunGlobalLatest) => "bun",
-        Some(UpdateAction::PnpmGlobalLatest) => "pnpm",
-        Some(UpdateAction::BrewUpgrade) => "brew",
-        Some(UpdateAction::StandaloneUnix) | Some(UpdateAction::StandaloneWindows) | None => {
-            "github-release"
-        }
-    }
+fn current_update_source(_action: Option<UpdateAction>) -> &'static str {
+    "github-release"
 }
 
 async fn fetch_latest_github_release_version() -> anyhow::Result<String> {

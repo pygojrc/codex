@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import shutil
 import sys
 import tomllib
@@ -16,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPOSITORY = "DioNanos/codex-termux"
 DEFAULT_TARGET = "aarch64-linux-android"
 MANIFEST_PATH = ROOT / "third_party" / "v8" / "android-artifacts.toml"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
 def resolved_v8_crate_version() -> str:
@@ -34,8 +37,20 @@ def resolved_v8_crate_version() -> str:
 
 def download(url: str, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url) as response, destination.open("wb") as output:
-        shutil.copyfileobj(response, output)
+    temporary = destination.with_name(f"{destination.name}.part")
+    temporary.unlink(missing_ok=True)
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "pygojrc-codex-termux-release-builder"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response, temporary.open(
+            "wb"
+        ) as output:
+            shutil.copyfileobj(response, output)
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def sha256(path: Path) -> str:
@@ -48,12 +63,12 @@ def sha256(path: Path) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Fetch fork-owned rusty_v8 Android artifacts for Cargo builds."
+        description="Fetch checksum-pinned rusty_v8 Android artifacts for Cargo builds."
     )
     parser.add_argument(
         "--repository",
         default=DEFAULT_REPOSITORY,
-        help=f"GitHub repository that publishes rusty_v8 artifacts (default: {DEFAULT_REPOSITORY})",
+        help=f"Fallback GitHub repository (default: {DEFAULT_REPOSITORY})",
     )
     parser.add_argument(
         "--target",
@@ -62,7 +77,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--release-tag",
-        help="Optional release tag. Defaults to rusty-v8-v<resolved_v8_version>.",
+        help="Optional release tag override. The manifest entry and hashes remain mandatory.",
     )
     parser.add_argument(
         "--output-dir",
@@ -73,8 +88,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_manifest() -> dict[str, object]:
-    if not MANIFEST_PATH.exists():
-        return {}
+    if not MANIFEST_PATH.is_file():
+        raise SystemExit(f"missing Android V8 artifact manifest: {MANIFEST_PATH}")
     return tomllib.loads(MANIFEST_PATH.read_text())
 
 
@@ -95,18 +110,37 @@ def manifest_entry(version: str, target: str) -> dict[str, str] | None:
     return {key: value for key, value in target_entry.items() if isinstance(value, str)}
 
 
+def required_manifest_value(entry: dict[str, str], key: str) -> str:
+    value = entry.get(key, "").strip()
+    if not value:
+        raise SystemExit(f"manifest entry is missing required field: {key}")
+    return value
+
+
 def main() -> int:
     args = parse_args()
     version = resolved_v8_crate_version()
     manifest = manifest_entry(version, args.target)
-    release_tag = args.release_tag or (
-        manifest.get("release_tag") if manifest else f"rusty-v8-v{version}"
-    )
-    repository = args.repository
-    if manifest and "repository" in manifest:
-        repository = manifest["repository"]
-    output_dir = Path(args.output_dir).resolve()
+    if manifest is None:
+        raise SystemExit(
+            "no checksum-pinned rusty_v8 Android artifact entry for "
+            f"v8={version}, target={args.target}"
+        )
 
+    manifest_release_tag = required_manifest_value(manifest, "release_tag")
+    release_tag = args.release_tag or manifest_release_tag
+    repository = manifest.get("repository", args.repository).strip()
+    if not REPOSITORY_RE.fullmatch(repository):
+        raise SystemExit(f"invalid GitHub repository slug in manifest: {repository!r}")
+
+    expected_archive_sha = required_manifest_value(manifest, "archive_sha256")
+    expected_binding_sha = required_manifest_value(manifest, "binding_sha256")
+    if not SHA256_RE.fullmatch(expected_archive_sha):
+        raise SystemExit("manifest archive_sha256 must be 64 lowercase hexadecimal characters")
+    if not SHA256_RE.fullmatch(expected_binding_sha):
+        raise SystemExit("manifest binding_sha256 must be 64 lowercase hexadecimal characters")
+
+    output_dir = Path(args.output_dir).resolve()
     archive_name = f"librusty_v8_release_{args.target}.a.gz"
     binding_name = f"src_binding_release_{args.target}.rs"
 
@@ -122,33 +156,34 @@ def main() -> int:
         download(binding_url, binding_path)
     except urllib.error.HTTPError as exc:
         raise SystemExit(
-            "failed to download fork-owned rusty_v8 Android artifacts; "
+            "failed to download checksum-pinned rusty_v8 Android artifacts; "
             f"missing asset or tag: {exc.url} ({exc.code})"
         ) from exc
     except urllib.error.URLError as exc:
         raise SystemExit(f"failed to download rusty_v8 Android artifacts: {exc}") from exc
 
-    if manifest:
-        expected_archive_sha = manifest.get("archive_sha256")
-        if expected_archive_sha and sha256(archive_path) != expected_archive_sha:
-            raise SystemExit(
-                f"archive checksum mismatch for {archive_path}; "
-                f"expected {expected_archive_sha}, got {sha256(archive_path)}"
-            )
-        expected_binding_sha = manifest.get("binding_sha256")
-        if expected_binding_sha and sha256(binding_path) != expected_binding_sha:
-            raise SystemExit(
-                f"binding checksum mismatch for {binding_path}; "
-                f"expected {expected_binding_sha}, got {sha256(binding_path)}"
-            )
+    actual_archive_sha = sha256(archive_path)
+    actual_binding_sha = sha256(binding_path)
+    if actual_archive_sha != expected_archive_sha:
+        archive_path.unlink(missing_ok=True)
+        raise SystemExit(
+            f"archive checksum mismatch for {archive_path}; "
+            f"expected {expected_archive_sha}, got {actual_archive_sha}"
+        )
+    if actual_binding_sha != expected_binding_sha:
+        binding_path.unlink(missing_ok=True)
+        raise SystemExit(
+            f"binding checksum mismatch for {binding_path}; "
+            f"expected {expected_binding_sha}, got {actual_binding_sha}"
+        )
 
     print(f"resolved v8 crate version: {version}")
     print(f"release tag: {release_tag}")
     print(f"repository: {repository}")
     print(f"archive: {archive_path}")
-    print(f"archive sha256: {sha256(archive_path)}")
+    print(f"archive sha256: {actual_archive_sha}")
     print(f"binding: {binding_path}")
-    print(f"binding sha256: {sha256(binding_path)}")
+    print(f"binding sha256: {actual_binding_sha}")
     print()
     print(f'export RUSTY_V8_ARCHIVE="{archive_path}"')
     print(f'export RUSTY_V8_SRC_BINDING_PATH="{binding_path}"')

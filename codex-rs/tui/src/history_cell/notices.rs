@@ -28,9 +28,7 @@ impl HistoryCell for UpdateAvailableHistoryCell {
         } else {
             line![
                 "See ",
-                "https://github.com/DioNanos/codex-termux"
-                    .cyan()
-                    .underlined(),
+                "https://github.com/pygojrc/codex".cyan().underlined(),
                 " for installation options."
             ]
         };
@@ -45,7 +43,7 @@ impl HistoryCell for UpdateAvailableHistoryCell {
             update_instruction,
             "",
             "See full release notes:",
-            "https://github.com/DioNanos/codex-termux/releases/latest"
+            "https://github.com/pygojrc/codex/releases/latest"
                 .cyan()
                 .underlined(),
         ];
@@ -62,7 +60,7 @@ impl HistoryCell for UpdateAvailableHistoryCell {
         let update_instruction = if let Some(update_action) = self.update_action {
             format!("Run {} to update.", update_action.command_str())
         } else {
-            "See https://github.com/DioNanos/codex-termux for installation options.".to_string()
+            "See https://github.com/pygojrc/codex for installation options.".to_string()
         };
         vec![
             Line::from("Update available!"),
@@ -70,7 +68,7 @@ impl HistoryCell for UpdateAvailableHistoryCell {
             Line::from(update_instruction),
             Line::from(""),
             Line::from("See full release notes:"),
-            Line::from("https://github.com/DioNanos/codex-termux/releases/latest"),
+            Line::from("https://github.com/pygojrc/codex/releases/latest"),
         ]
     }
 
@@ -184,13 +182,11 @@ impl HistoryCell for DeprecationNoticeCell {
         lines.push(vec!["⚠ ".red().bold(), self.summary.clone().red()].into());
 
         let wrap_width = width.saturating_sub(4).max(1) as usize;
-
         if let Some(details) = &self.details {
             let detail_line = Line::from(details.clone().dim());
             let wrapped = adaptive_wrap_line(&detail_line, RtOptions::new(wrap_width));
             push_owned_lines(&wrapped, &mut lines);
         }
-
         lines
     }
 
@@ -202,6 +198,7 @@ impl HistoryCell for DeprecationNoticeCell {
         lines
     }
 }
+
 pub(crate) fn new_info_event(message: String, hint: Option<String>) -> PlainHistoryCell {
     let mut line = vec!["• ".dim(), message.into()];
     if let Some(hint) = hint {
@@ -213,9 +210,6 @@ pub(crate) fn new_info_event(message: String, hint: Option<String>) -> PlainHist
 }
 
 pub(crate) fn new_error_event(message: String) -> PlainHistoryCell {
-    // Use a hair space (U+200A) to create a subtle, near-invisible separation
-    // before the text. VS16 is intentionally omitted to keep spacing tighter
-    // in terminals like Ghostty.
     let lines: Vec<Line<'static>> = vec![vec![format!("■ {message}").red()].into()];
     PlainHistoryCell { lines }
 }
