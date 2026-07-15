@@ -10,18 +10,7 @@ on:
       - "scripts/fetch_rusty_v8_android.py"
       - "third_party/v8/**"
       - "verify-patches.sh"
-  workflow_dispatch:
-    inputs:
-      source_ref:
-        description: "Trusted Git ref to build"
-        required: true
-        type: string
-        default: "main"
-      release_tag:
-        description: "GitHub release tag"
-        required: true
-        type: string
-        default: "termux-v0.144.4"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -54,10 +43,10 @@ jobs:
       CARGO_PROFILE_RELEASE_STRIP: "symbols"
 
     steps:
-      - name: Checkout trusted source
+      - name: Checkout trusted main source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.ref }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
@@ -67,12 +56,14 @@ jobs:
         run: |
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
+          main_sha="$(git rev-parse origin/main)"
+          test "${source_sha}" = "${main_sha}"
           git cat-file -e "${UPSTREAM_COMMIT}^{commit}"
           git merge-base --is-ancestor "${UPSTREAM_COMMIT}" "${source_sha}"
           test "$(git status --porcelain)" = ""
           grep -q '^version = "0.144.4"$' codex-rs/Cargo.toml
           echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
-          echo "Building source ${source_sha}, based on OpenAI Codex ${UPSTREAM_TAG}."
+          echo "Building trusted main source ${source_sha}, based on OpenAI Codex ${UPSTREAM_TAG}."
 
       - name: Verify Termux security and compatibility invariants
         shell: bash
@@ -219,8 +210,8 @@ jobs:
             cd dist
             tar -czf "${archive}" "${package_dir}"
             sha256sum "${archive}" > "${archive}.sha256"
+            sha256sum -c "${archive}.sha256"
           )
-          sha256sum -c "dist/${archive}.sha256"
 
           echo "artifact_name=${artifact_name}" >> "${GITHUB_OUTPUT}"
           echo "PACKAGE_ARCHIVE=dist/${archive}" >> "${GITHUB_ENV}"
@@ -247,7 +238,7 @@ jobs:
       CODEX_VERSION: "0.144.4"
       UPSTREAM_TAG: "rust-v0.144.4"
       UPSTREAM_COMMIT: "8c68d4c87dc54d38861f5114e920c3de2efa5876"
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || 'termux-v0.144.4' }}
+      RELEASE_TAG: "termux-v0.144.4"
       SOURCE_SHA: ${{ needs.build-android-arm64.outputs.source_sha }}
 
     steps:
