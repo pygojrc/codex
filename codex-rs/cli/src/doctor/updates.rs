@@ -1,10 +1,8 @@
 //! Diagnoses whether Codex update paths target the running installation.
 //!
-//! Update diagnostics combine cached version metadata, install-channel hints,
-//! and bounded latest-version probes. For npm-managed launches, this module also
-//! verifies that npm install -g would update the package root that launched the
-//! current process, which catches PATH and prefix mismatches before the user runs
-//! an update command.
+//! The Termux release channel is deliberately manual: diagnostics query this
+//! repository's GitHub Release metadata and never recommend executing an npm
+//! package owned by another publisher.
 
 use std::path::Path;
 
@@ -23,14 +21,10 @@ use super::run_command;
 
 const VERSION_FILE_NAME: &str = "version.json";
 const GITHUB_LATEST_RELEASE_URL: &str =
-    "https://api.github.com/repos/DioNanos/codex-termux/releases/latest";
-const HOMEBREW_CASK_API_URL: &str = "https://formulae.brew.sh/api/cask/codex.json";
+    "https://api.github.com/repos/pygojrc/codex/releases/latest";
+const MANUAL_RELEASE_URL: &str = "https://github.com/pygojrc/codex/releases/latest";
 
 /// Builds the update-health row for the current installation.
-///
-/// Network failures while fetching latest-version metadata degrade the row to a
-/// warning instead of failing doctor outright; update freshness is useful
-/// support context but should not mask more direct install/config failures.
 pub(super) fn updates_check(config: &Config) -> DoctorCheck {
     let current_exe = std::env::current_exe().ok();
     let install_context = doctor_install_context(current_exe.as_deref());
@@ -51,42 +45,39 @@ pub(super) fn updates_check(config: &Config) -> DoctorCheck {
     if doctor_managed_by_npm(current_exe.as_deref()) {
         match npm_global_root_check() {
             NpmRootCheck::Match { package_root } => {
-                details.push(format!("npm update target: {}", package_root.display()));
+                details.push(format!("npm package root: {}", package_root.display()));
             }
             NpmRootCheck::Mismatch {
                 running_package_root,
                 npm_package_root,
             } => {
                 status = CheckStatus::Fail;
-                summary = "update would target a different npm install".to_string();
+                summary = "running npm package root differs from the global npm root".to_string();
                 details.push(format!(
                     "running package root: {}",
                     running_package_root.display()
                 ));
                 details.push(format!("npm package root: {}", npm_package_root.display()));
                 remediation = Some(format!(
-                    "Fix PATH or npm prefix so the running package root ({}) matches the npm global package root ({}).",
-                    running_package_root.display(),
-                    npm_package_root.display()
+                    "Fix PATH or npm prefix, then use the manually verified Termux release at {MANUAL_RELEASE_URL}."
                 ));
             }
             NpmRootCheck::MissingPackageRoot => {
                 status = status.max(CheckStatus::Warning);
-                summary = "npm update target could not be proven".to_string();
-                remediation = Some(
-                    "Reinstall or update Codex so the JS shim provides CODEX_MANAGED_PACKAGE_ROOT."
-                        .to_string(),
-                );
+                summary = "npm package root could not be proven".to_string();
+                remediation = Some(format!(
+                    "Use the native Termux archive published at {MANUAL_RELEASE_URL}."
+                ));
             }
             NpmRootCheck::NpmUnavailable(error) => {
                 status = status.max(CheckStatus::Warning);
-                summary = "npm update target could not be inspected".to_string();
+                summary = "npm installation context could not be inspected".to_string();
                 details.push(format!("npm root -g failed: {error}"));
             }
         }
     }
 
-    match fetch_latest_version(&install_context) {
+    match fetch_latest_github_release_version() {
         Ok(latest_version) => {
             details.push(format!("latest version: {latest_version}"));
             if is_newer(&latest_version, env!("CARGO_PKG_VERSION")) == Some(true) {
@@ -132,23 +123,12 @@ fn push_cached_version_details(details: &mut Vec<String>, version_file: &Path) {
 
 fn update_action_label(context: &InstallContext) -> &'static str {
     match &context.method {
-        InstallMethod::Npm => "npm install -g @mmmbuto/codex-cli-termux",
-        InstallMethod::Bun => "bun install -g @mmmbuto/codex-cli-termux",
-        InstallMethod::Pnpm => "pnpm add -g @mmmbuto/codex-cli-termux",
-        InstallMethod::Brew => "npm install -g @mmmbuto/codex-cli-termux",
-        InstallMethod::Standalone { .. } => "standalone installer",
-        InstallMethod::Other => "manual or unknown",
-    }
-}
-
-fn fetch_latest_version(context: &InstallContext) -> Result<String, String> {
-    match &context.method {
-        InstallMethod::Brew => fetch_homebrew_cask_version(),
         InstallMethod::Npm
         | InstallMethod::Bun
         | InstallMethod::Pnpm
+        | InstallMethod::Brew
         | InstallMethod::Standalone { .. }
-        | InstallMethod::Other => fetch_latest_github_release_version(),
+        | InstallMethod::Other => "manual GitHub Release with SHA-256 verification",
     }
 }
 
@@ -160,20 +140,15 @@ fn fetch_latest_github_release_version() -> Result<String, String> {
 
     let info = http_get_json::<ReleaseInfo>(GITHUB_LATEST_RELEASE_URL)?;
     let tag_name = info.tag_name.as_str();
-    tag_name
-        .strip_prefix("rust-v")
+    let version = tag_name
+        .strip_prefix("termux-v")
+        .or_else(|| tag_name.strip_prefix("rust-v"))
         .or_else(|| tag_name.strip_prefix('v'))
-        .map(str::to_string)
-        .ok_or_else(|| format!("failed to parse latest tag {}", info.tag_name))
-}
-
-fn fetch_homebrew_cask_version() -> Result<String, String> {
-    #[derive(Deserialize)]
-    struct HomebrewCaskInfo {
-        version: String,
+        .unwrap_or(tag_name);
+    if parse_version(version).is_none() {
+        return Err(format!("failed to parse latest tag {}", info.tag_name));
     }
-
-    http_get_json::<HomebrewCaskInfo>(HOMEBREW_CASK_API_URL).map(|info| info.version)
+    Ok(version.to_string())
 }
 
 fn http_get_json<T>(url: &str) -> Result<T, String>
@@ -220,27 +195,21 @@ mod tests {
     }
 
     #[test]
-    fn update_action_labels_install_contexts() {
-        assert_eq!(
-            update_action_label(&InstallContext {
-                method: InstallMethod::Npm,
-                package_layout: None,
-            }),
-            concat!("npm install -g @mmmbuto/", "codex-cli-termux")
-        );
-        assert_eq!(
-            update_action_label(&InstallContext {
-                method: InstallMethod::Pnpm,
-                package_layout: None,
-            }),
-            concat!("pnpm add -g @mmmbuto/", "codex-cli-termux")
-        );
-        assert_eq!(
-            update_action_label(&InstallContext {
-                method: InstallMethod::Other,
-                package_layout: None,
-            }),
-            "manual or unknown"
-        );
+    fn every_install_context_uses_manual_release_channel() {
+        for method in [
+            InstallMethod::Npm,
+            InstallMethod::Bun,
+            InstallMethod::Pnpm,
+            InstallMethod::Brew,
+            InstallMethod::Other,
+        ] {
+            assert_eq!(
+                update_action_label(&InstallContext {
+                    method,
+                    package_layout: None,
+                }),
+                "manual GitHub Release with SHA-256 verification"
+            );
+        }
     }
 }
