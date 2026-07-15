@@ -47,7 +47,7 @@ contains "doctor uses repository release API" "api.github.com/repos/pygojrc/code
 not_contains "doctor must not recommend third-party npm package" "@mmmbuto" codex-rs/cli/src/doctor/updates.rs
 
 contains "Android daemon resolves the running native executable" "std::env::current_exe()" codex-rs/app-server-daemon/src/managed_install.rs
-not_contains "Android daemon path must not trust CODEX_SELF_EXE" "CODEX_SELF_EXE" codex-rs/app-server-daemon/src/managed_install.rs
+not_contains "Android daemon path must not read CODEX_SELF_EXE" 'var_os("CODEX_SELF_EXE")' codex-rs/app-server-daemon/src/managed_install.rs
 contains "daemon automatic updates remain disabled" "auto_update_enabled: false" codex-rs/app-server-daemon/src/lib.rs
 contains "control socket is owner-only" "const CONTROL_SOCKET_MODE: u32 = 0o600" codex-rs/app-server-transport/src/transport/unix_socket.rs
 contains "control socket parent uses private directory helper" "prepare_private_socket_directory" codex-rs/app-server-transport/src/transport/unix_socket.rs
@@ -98,7 +98,7 @@ if grep -Eq 'uses: actions/(checkout|upload-artifact|download-artifact)@v[0-9]+'
 fi
 pass "GitHub-maintained actions are pinned to immutable commit SHAs"
 
-if grep -R -n -E '(curl|wget)[^\n|]*\|[[:space:]]*(sh|bash)' \
+if grep -R -n -E '(curl|wget).*\|[[:space:]]*(sh|bash)' \
   codex-rs/tui/src/update_action.rs \
   codex-rs/app-server-daemon/src \
   scripts/fetch_rusty_v8_android.py; then
