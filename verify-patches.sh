@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Security review: fail closed on external artifacts and repository update channels.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
