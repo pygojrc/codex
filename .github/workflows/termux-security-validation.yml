@@ -1,9 +1,9 @@
 name: Validate hardened Termux release
 
 on:
-  push:
+  pull_request:
     branches:
-      - security/harden-termux-v0.144.4
+      - main
     paths:
       - ".github/workflows/termux-security-validation.yml"
       - ".github/workflows/termux-npm-build-publish.yml"
@@ -11,6 +11,7 @@ on:
       - "scripts/fetch_rusty_v8_android.py"
       - "third_party/v8/**"
       - "verify-patches.sh"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
