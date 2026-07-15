@@ -28,9 +28,7 @@ impl HistoryCell for UpdateAvailableHistoryCell {
         } else {
             line![
                 "See ",
-                "https://github.com/pygojrc/codex"
-                    .cyan()
-                    .underlined(),
+                "https://github.com/pygojrc/codex".cyan().underlined(),
                 " for installation options."
             ]
         };

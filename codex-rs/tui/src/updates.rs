@@ -54,18 +54,14 @@ pub fn get_upgrade_version(config: &Config) -> Option<String> {
     })
 }
 
-const LATEST_RELEASE_URL: &str =
-    "https://api.github.com/repos/pygojrc/codex/releases/latest";
+const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/pygojrc/codex/releases/latest";
 
 #[derive(Deserialize, Debug, Clone)]
 struct ReleaseInfo {
     tag_name: String,
 }
 
-async fn check_for_update(
-    version_file: &Path,
-    action: Option<UpdateAction>,
-) -> anyhow::Result<()> {
+async fn check_for_update(version_file: &Path, action: Option<UpdateAction>) -> anyhow::Result<()> {
     let source = current_update_source(action);
     let latest_version = fetch_latest_github_release_version().await?;
 
