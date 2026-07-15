@@ -5,20 +5,22 @@ use codex_install_context::InstallMethod;
 #[cfg(any(not(debug_assertions), test))]
 use codex_install_context::StandalonePlatform;
 
+const TERMUX_RELEASES_URL: &str = "https://github.com/pygojrc/codex/releases/latest";
+
 /// Update action the CLI should perform after the TUI exits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpdateAction {
-    /// Update via `npm install -g @mmmbuto/codex-cli-termux@latest`.
+    /// Open this repository's Termux release page for a manual, checksum-visible update.
     NpmGlobalLatest,
-    /// Update via `bun install -g @mmmbuto/codex-cli-termux@latest`.
+    /// Open this repository's Termux release page for a manual, checksum-visible update.
     BunGlobalLatest,
-    /// Update via `pnpm add -g @mmmbuto/codex-cli-termux@latest`.
+    /// Open this repository's Termux release page for a manual, checksum-visible update.
     PnpmGlobalLatest,
-    /// Update via `brew upgrade codex`.
+    /// Open this repository's Termux release page for a manual, checksum-visible update.
     BrewUpgrade,
-    /// Update standalone installs via `npm install -g @mmmbuto/codex-cli-termux@latest`.
+    /// Open this repository's Termux release page for a manual, checksum-visible update.
     StandaloneUnix,
-    /// Update standalone installs via `npm install -g @mmmbuto/codex-cli-termux@latest`.
+    /// Open this repository's Termux release page for a manual, checksum-visible update.
     StandaloneWindows,
 }
 
@@ -34,37 +36,25 @@ impl UpdateAction {
                 StandalonePlatform::Unix => UpdateAction::StandaloneUnix,
                 StandalonePlatform::Windows => UpdateAction::StandaloneWindows,
             }),
-            InstallMethod::Other => None,
+            InstallMethod::Other => {
+                #[cfg(target_os = "android")]
+                {
+                    Some(UpdateAction::StandaloneUnix)
+                }
+                #[cfg(not(target_os = "android"))]
+                {
+                    None
+                }
+            }
         }
     }
 
-    /// Returns the list of command-line arguments for invoking the update.
+    /// Returns the command that opens the repository-owned release page. The
+    /// Termux build deliberately does not execute an npm package controlled by
+    /// another publisher.
     pub fn command_args(self) -> (&'static str, &'static [&'static str]) {
-        match self {
-            UpdateAction::NpmGlobalLatest => (
-                "npm",
-                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
-            ),
-            UpdateAction::BunGlobalLatest => (
-                "bun",
-                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
-            ),
-            UpdateAction::PnpmGlobalLatest => (
-                "pnpm",
-                &["add", "-g", "@mmmbuto/codex-cli-termux@latest"],
-            ),
-            // codex-termux fork: no Homebrew cask is shipped, so `brew upgrade
-            // --cask codex` would pull the UPSTREAM openai cask and replace the
-            // fork. Redirect to the supported npm channel, like Standalone*.
-            UpdateAction::BrewUpgrade => (
-                "npm",
-                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
-            ),
-            UpdateAction::StandaloneUnix | UpdateAction::StandaloneWindows => (
-                "npm",
-                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"],
-            ),
-        }
+        let _ = self;
+        ("termux-open-url", &[TERMUX_RELEASES_URL])
     }
 
     /// Returns string representation of the command-line arguments for invoking the update.
@@ -92,12 +82,17 @@ mod tests {
             AbsolutePathBuf::from_absolute_path(std::env::temp_dir().join("native-release"))
                 .expect("temp dir path should be absolute");
 
+        let expected_other = if cfg!(target_os = "android") {
+            Some(UpdateAction::StandaloneUnix)
+        } else {
+            None
+        };
         assert_eq!(
             UpdateAction::from_install_context(&InstallContext {
                 method: InstallMethod::Other,
                 package_layout: None,
             }),
-            None
+            expected_other
         );
         assert_eq!(
             UpdateAction::from_install_context(&InstallContext {
@@ -152,20 +147,19 @@ mod tests {
     }
 
     #[test]
-    fn standalone_update_commands_use_fork_package() {
-        assert_eq!(
-            UpdateAction::StandaloneUnix.command_args(),
-            (
-                "npm",
-                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"][..],
-            )
-        );
-        assert_eq!(
-            UpdateAction::StandaloneWindows.command_args(),
-            (
-                "npm",
-                &["install", "-g", "@mmmbuto/codex-cli-termux@latest"][..],
-            )
-        );
+    fn every_update_action_opens_repository_release_page() {
+        for action in [
+            UpdateAction::NpmGlobalLatest,
+            UpdateAction::BunGlobalLatest,
+            UpdateAction::PnpmGlobalLatest,
+            UpdateAction::BrewUpgrade,
+            UpdateAction::StandaloneUnix,
+            UpdateAction::StandaloneWindows,
+        ] {
+            assert_eq!(
+                action.command_args(),
+                ("termux-open-url", &[TERMUX_RELEASES_URL][..])
+            );
+        }
     }
 }
