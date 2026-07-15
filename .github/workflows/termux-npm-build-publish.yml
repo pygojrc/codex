@@ -156,8 +156,8 @@ jobs:
           Install in Termux:
             tar -xzf ${archive}
             cd ${package_dir}
-            install -m 755 codex "$PREFIX/bin/codex"
-            install -m 755 libc++_shared.so "$PREFIX/bin/libc++_shared.so"
+            install -m 755 codex "\$PREFIX/bin/codex"
+            install -m 755 libc++_shared.so "\$PREFIX/bin/libc++_shared.so"
             codex --version
             codex login
 
