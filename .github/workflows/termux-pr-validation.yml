@@ -36,8 +36,11 @@ jobs:
       - name: Validate workflow, scripts, and security invariants
         shell: bash
         run: |
-          set -euo pipefail
-          python3 - <<'PY'
+          set -o pipefail
+          status=0
+          {
+            set -eux
+            python3 - <<'PY'
           from pathlib import Path
           import yaml
 
@@ -47,14 +50,30 @@ jobs:
               raise SystemExit(f'{path} did not parse as a YAML mapping')
           print(f'validated YAML: {path}')
           PY
-          bash -n verify-patches.sh
-          CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
-          python3 -m py_compile scripts/fetch_rusty_v8_android.py
+            bash -n verify-patches.sh
+            CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
+            python3 -m py_compile scripts/fetch_rusty_v8_android.py
+          } 2>&1 | tee termux-validation.log || status=$?
+          exit "${status}"
 
       - name: Validate Rust formatting and locked workspace metadata
         shell: bash
         run: |
-          set -euo pipefail
-          rustup run 1.95.0 cargo fmt --all -- --check
-          cd codex-rs
-          rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+          set -o pipefail
+          status=0
+          {
+            set -eux
+            rustup run 1.95.0 cargo fmt --all -- --check
+            cd codex-rs
+            rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+          } 2>&1 | tee -a termux-validation.log || status=$?
+          exit "${status}"
+
+      - name: Upload validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: termux-validation-${{ github.run_id }}
+          path: termux-validation.log
+          if-no-files-found: warn
+          retention-days: 7
