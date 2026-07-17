@@ -1,0 +1,191 @@
+name: One-shot sync OpenAI Codex 0.144.5
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sync-openai-0.144.5.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-sync-openai-0.144.5
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'pygojrc/codex' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SYNC_BRANCH: sync/termux-v0.144.5
+      OLD_VERSION: 0.144.4
+      NEW_VERSION: 0.144.5
+      OLD_UPSTREAM_COMMIT: 8c68d4c87dc54d38861f5114e920c3de2efa5876
+      PATCH_COMMIT: 215fb464f1932b5fd7beb5d4615bc1927d80fbf7
+      RELEASE_COMMIT: 87db9bc18ba5bc82c1cb4e4381b44f693ee35623
+      RELEASE_TAG: rust-v0.144.5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Recreate clean synchronization branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B "${SYNC_BRANCH}" origin/main
+
+      - name: Fetch and verify fixed upstream release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/openai/codex.git
+          git fetch --no-tags --depth=2 upstream "refs/tags/${RELEASE_TAG}"
+          test "$(git rev-parse FETCH_HEAD)" = "${RELEASE_COMMIT}"
+          test "$(git rev-parse FETCH_HEAD^)" = "${PATCH_COMMIT}"
+
+          files=(
+            codex-rs/core/src/exec_policy.rs
+            codex-rs/core/src/exec_policy_tests.rs
+            codex-rs/core/tests/suite/exec_policy.rs
+            codex-rs/shell-command/src/bash.rs
+            codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
+          )
+          for file in "${files[@]}"; do
+            git diff --quiet "${OLD_UPSTREAM_COMMIT}" -- "${file}" || {
+              echo "local Termux delta unexpectedly modifies upstream release file: ${file}" >&2
+              exit 1
+            }
+          done
+
+          git cherry-pick "${PATCH_COMMIT}"
+
+          for file in "${files[@]}"; do
+            git diff --quiet "${RELEASE_COMMIT}" -- "${file}" || {
+              echo "synchronized file differs from fixed upstream release: ${file}" >&2
+              exit 1
+            }
+          done
+
+      - name: Update release metadata and locked workspace versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          old = "0.144.4"
+          new = "0.144.5"
+          old_commit = "8c68d4c87dc54d38861f5114e920c3de2efa5876"
+          new_commit = "87db9bc18ba5bc82c1cb4e4381b44f693ee35623"
+
+          cargo = Path("codex-rs/Cargo.toml")
+          text = cargo.read_text()
+          text, count = re.subn(
+              rf'(\[workspace\.package\]\nversion = )"{re.escape(old)}"',
+              rf'\1"{new}"',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("workspace Cargo version was not updated exactly once")
+          cargo.write_text(text)
+
+          lock = Path("codex-rs/Cargo.lock")
+          sections = lock.read_text().split("[[package]]")
+          updated = 0
+          for index in range(1, len(sections)):
+              section = sections[index]
+              if "\nsource = " not in section and f'version = "{old}"' in section:
+                  sections[index] = section.replace(
+                      f'version = "{old}"', f'version = "{new}"', 1
+                  )
+                  updated += 1
+          if updated < 20:
+              raise SystemExit(f"only updated {updated} local Cargo.lock packages")
+          lock.write_text("[[package]]".join(sections))
+
+          package_json = Path("npm-package/package.json")
+          if package_json.is_file():
+              package = json.loads(package_json.read_text())
+              if package.get("version") != old:
+                  raise SystemExit("unexpected npm-package version")
+              package["version"] = new
+              package_json.write_text(json.dumps(package, indent=2) + "\n")
+
+          workflow = Path(".github/workflows/termux-npm-build-publish.yml")
+          workflow_text = workflow.read_text()
+          replacements = [
+              (old_commit, new_commit),
+              ("rust-v0.144.4", "rust-v0.144.5"),
+              ("termux-v0.144.4", "termux-v0.144.5"),
+              (old, new),
+          ]
+          for before, after in replacements:
+              if before not in workflow_text:
+                  raise SystemExit(f"release workflow is missing expected value: {before}")
+              workflow_text = workflow_text.replace(before, after)
+          workflow.write_text(workflow_text)
+
+          readme = Path("README.md")
+          readme_text = readme.read_text()
+          readme_text = readme_text.replace("rust-v0.144.4", "rust-v0.144.5")
+          readme_text = readme_text.replace("`0.144.4`", "`0.144.5`")
+          readme.write_text(readme_text)
+
+          changelog = Path("CHANGELOG.md")
+          changelog_text = changelog.read_text()
+          heading = "# [0.144.5] - 2026-07-16\n"
+          if heading not in changelog_text:
+              changelog.write_text(
+                  heading
+                  + "\nSynced to OpenAI Codex `rust-v0.144.5`. This stable patch expands dangerous-command detection, including forced `rm` forms, and provides clearer rejection reasons. The previously reviewed Termux compatibility and release hardening remain applied.\n\n"
+                  + changelog_text
+              )
+          PY
+
+          git add codex-rs/Cargo.toml codex-rs/Cargo.lock npm-package/package.json \
+            .github/workflows/termux-npm-build-publish.yml README.md CHANGELOG.md
+          git commit -m "chore(release): sync OpenAI Codex 0.144.5"
+
+      - name: Validate synchronized Termux source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
+          cd codex-rs
+          rustup run 1.95.0 cargo fmt --all -- --check
+          rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+          cd ..
+          git diff --check
+          test "$(git status --porcelain)" = ""
+
+      - name: Record stable ancestry and publish synchronization branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge --no-ff -s ours "${RELEASE_COMMIT}" \
+            -m "merge upstream OpenAI Codex ${RELEASE_TAG}"
+          git merge-base --is-ancestor "${RELEASE_COMMIT}" HEAD
+          git push --force-with-lease origin "HEAD:${SYNC_BRANCH}"
+
+      - name: Remove one-shot synchronizer from main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/sync-openai-0.144.5.yml
+          git commit -m "ci: remove one-shot OpenAI Codex 0.144.5 synchronizer"
+          git push origin main
