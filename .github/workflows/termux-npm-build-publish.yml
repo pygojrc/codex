@@ -33,9 +33,9 @@ jobs:
       ANDROID_NDK_VERSION: "28.2.13676358"
       RUST_TOOLCHAIN: "1.95.0"
       ANDROID_API_LEVEL: "29"
-      CODEX_VERSION: "0.144.4"
-      UPSTREAM_TAG: "rust-v0.144.4"
-      UPSTREAM_COMMIT: "8c68d4c87dc54d38861f5114e920c3de2efa5876"
+      CODEX_VERSION: "0.144.5"
+      UPSTREAM_TAG: "rust-v0.144.5"
+      UPSTREAM_COMMIT: "87db9bc18ba5bc82c1cb4e4381b44f693ee35623"
       CARGO_PROFILE_RELEASE_OPT_LEVEL: "3"
       CARGO_PROFILE_RELEASE_LTO: "thin"
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
@@ -61,7 +61,7 @@ jobs:
           git cat-file -e "${UPSTREAM_COMMIT}^{commit}"
           git merge-base --is-ancestor "${UPSTREAM_COMMIT}" "${source_sha}"
           test "$(git status --porcelain)" = ""
-          grep -q '^version = "0.144.4"$' codex-rs/Cargo.toml
+          grep -q '^version = "0.144.5"$' codex-rs/Cargo.toml
           echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
           echo "Building trusted main source ${source_sha}, based on OpenAI Codex ${UPSTREAM_TAG}."
 
@@ -235,10 +235,10 @@ jobs:
     permissions:
       contents: write
     env:
-      CODEX_VERSION: "0.144.4"
-      UPSTREAM_TAG: "rust-v0.144.4"
-      UPSTREAM_COMMIT: "8c68d4c87dc54d38861f5114e920c3de2efa5876"
-      RELEASE_TAG: "termux-v0.144.4"
+      CODEX_VERSION: "0.144.5"
+      UPSTREAM_TAG: "rust-v0.144.5"
+      UPSTREAM_COMMIT: "87db9bc18ba5bc82c1cb4e4381b44f693ee35623"
+      RELEASE_TAG: "termux-v0.144.5"
       SOURCE_SHA: ${{ needs.build-android-arm64.outputs.source_sha }}
 
     steps:
