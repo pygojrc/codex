@@ -56,7 +56,7 @@ What this fork does not do:
 ## Releases and Updates
 
 - Latest GitHub release: [releases/latest](https://github.com/DioNanos/codex-termux/releases/latest)
-- Upstream base: OpenAI Codex `rust-v0.144.4`, packaged as `0.144.4` on npm `next`. The `latest` dist-tag remains on `0.144.1`; `stable` stays on `0.143.0` for conservative installs.
+- Upstream base: OpenAI Codex `rust-v0.144.5`, packaged as `0.144.5` on npm `next`. The `latest` dist-tag remains on `0.144.1`; `stable` stays on `0.143.0` for conservative installs.
 - npm package: [`@mmmbuto/codex-cli-termux`](https://www.npmjs.com/package/@mmmbuto/codex-cli-termux)
 - Legacy `@mmmbuto/codex-cli-lts` (OpenAI Codex 0.80.x) is archived; current builds live in this package or in [`@mmmbuto/codex-vl`](https://www.npmjs.com/package/@mmmbuto/codex-vl) (multi-platform).
 

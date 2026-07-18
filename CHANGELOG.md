@@ -1,3 +1,7 @@
+# [0.144.5] - 2026-07-16
+
+Synced to OpenAI Codex `rust-v0.144.5`. This stable patch expands dangerous-command detection, including forced `rm` forms, and provides clearer rejection reasons. The reviewed Termux compatibility and release hardening remain applied.
+
 # [0.144.4] - 2026-07-14
 
 Synced the complete Termux fork to the final upstream OpenAI Codex
