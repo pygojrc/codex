@@ -1,4 +1,4 @@
-name: Sync OpenAI Codex 0.144.6 v2
+name: Sync OpenAI Codex 0.144.6 v3
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-openai-codex-0.144.6-v2
+  group: sync-openai-codex-0.144.6-v3
   cancel-in-progress: false
 
 jobs:
@@ -87,11 +87,9 @@ jobs:
           test -z "$(git diff --name-only --diff-filter=U)"
           grep -q '^version = "0.144.6"$' codex-rs/Cargo.toml
 
-          # Verify the two user-facing upstream fixes are present without
-          # requiring Termux-specific files to be byte-identical to upstream.
           grep -q 'DangerousCommandMatch' codex-rs/core/src/exec_policy.rs
           grep -q 'ForcedRm' codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
-          test "$(grep -c '"'"'context_window"'"': 272000' codex-rs/models-manager/models.json)" -ge 3
+          test "$(grep -c '"context_window": 272000' codex-rs/models-manager/models.json)" -ge 3
           if git diff --quiet "${OLD_UPSTREAM_COMMIT}" -- codex-rs/models-manager/models.json; then
             echo "models.json did not receive the 0.144.6 metadata update" >&2
             exit 1
