@@ -23,7 +23,7 @@ jobs:
     env:
       TARGET_BRANCH: sync-termux-v0.144.6
       DIAGNOSTIC_BRANCH: sync-diagnostic-v0.144.6
-      RELEASE_TAG: rust-v0.144.6
+      UPSTREAM_BRANCH: upstream-rust-v0.144.6
       RELEASE_COMMIT: 5d1fbf26c43abc65a203928b2e31561cb039e06d
     steps:
       - name: Checkout Termux synchronization branch
@@ -45,10 +45,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "fetching-upstream" > "${RUNNER_TEMP}/sync-checkpoint"
-          git remote add upstream https://github.com/openai/codex.git
-          git fetch --no-tags upstream "refs/tags/${RELEASE_TAG}"
-          test "$(git rev-parse FETCH_HEAD)" = "${RELEASE_COMMIT}"
+          echo "fetching-pinned-upstream" > "${RUNNER_TEMP}/sync-checkpoint"
+          git fetch origin "${UPSTREAM_BRANCH}:refs/remotes/origin/${UPSTREAM_BRANCH}"
+          test "$(git rev-parse "origin/${UPSTREAM_BRANCH}")" = "${RELEASE_COMMIT}"
 
           if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" HEAD; then
             echo "merging-upstream" > "${RUNNER_TEMP}/sync-checkpoint"
@@ -162,7 +161,8 @@ jobs:
             .sync-0.144.6-trigger \
             .sync-0.144.6-x64-v2-trigger \
             .sync-0.144.6-macos-trigger \
-            .sync-0.144.6-arm-v4-trigger
+            .sync-0.144.6-arm-v4-trigger \
+            .sync-0.144.6-arm-v5-trigger
           git add codex-rs/Cargo.toml npm-package/package.json README.md CHANGELOG.md
 
       - name: Validate locked workspace metadata
