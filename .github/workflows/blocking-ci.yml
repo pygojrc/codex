@@ -6,6 +6,7 @@ on:
   pull_request:
     paths-ignore:
       - ".sync-*"
+      - ".release-trigger-*"
   push:
     branches: [main]
 
