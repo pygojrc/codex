@@ -1,4 +1,4 @@
-name: Sync OpenAI Codex 0.144.6 x64
+name: Sync OpenAI Codex 0.144.6 x64 v2
 
 on:
   pull_request:
@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-openai-codex-0.144.6-x64
-  cancel-in-progress: false
+  group: sync-openai-codex-0.144.6-x64-v2
+  cancel-in-progress: true
 
 jobs:
   sync:
@@ -53,10 +53,9 @@ jobs:
           git merge --no-commit --no-ff "${RELEASE_COMMIT}"
           merge_status=$?
           set -e
-          mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+          conflicts="$(git diff --name-only --diff-filter=U)"
           if [ "${merge_status}" -ne 0 ]; then
-            test "${#conflicts[@]}" -eq 1
-            test "${conflicts[0]}" = "codex-rs/Cargo.toml"
+            test "${conflicts}" = "codex-rs/Cargo.toml"
             git checkout --ours codex-rs/Cargo.toml
           fi
 
@@ -103,9 +102,9 @@ jobs:
           if heading not in old:
               changelog.write_text(heading + '\nSynced to OpenAI Codex `rust-v0.144.6`. Includes expanded dangerous-command detection and refreshed GPT-5.6 Sol, Terra, and Luna metadata with corrected 272,000-token context windows.\n\n' + old)
           PY
-          rm -f .sync-0.144.6-trigger
+          rm -f .sync-0.144.6-trigger .sync-0.144.6-macos-trigger
           git add codex-rs/Cargo.toml npm-package/package.json README.md CHANGELOG.md
-          git add -u .sync-0.144.6-trigger
+          git add -u .sync-0.144.6-trigger .sync-0.144.6-macos-trigger
 
       - name: Validate and push
         shell: bash
