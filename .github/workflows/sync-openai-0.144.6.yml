@@ -1,4 +1,4 @@
-name: Sync OpenAI Codex 0.144.6
+name: Sync OpenAI Codex 0.144.6 v2
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-openai-codex-0.144.6
+  group: sync-openai-codex-0.144.6-v2
   cancel-in-progress: false
 
 jobs:
@@ -56,45 +56,46 @@ jobs:
           merge_status=$?
           set -e
 
+          mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+          printf 'merge_status=%s\n' "${merge_status}"
+          printf 'conflict=%s\n' "${conflicts[@]:-none}"
+
           if [ "${merge_status}" -ne 0 ]; then
-            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
             test "${#conflicts[@]}" -eq 1
             test "${conflicts[0]}" = "codex-rs/Cargo.toml"
             git checkout --ours codex-rs/Cargo.toml
-            python3 - <<'PY'
+          fi
+
+          python3 - <<'PY'
           import re
           from pathlib import Path
 
           path = Path('codex-rs/Cargo.toml')
           text = path.read_text()
           text, count = re.subn(
-              r'(\[workspace\.package\]\nversion = )"0\.144\.4"',
+              r'(\[workspace\.package\]\nversion = )"(?:0\.144\.4|0\.0\.0)"',
               r'\1"0.144.6"',
               text,
               count=1,
           )
-          if count != 1:
-              raise SystemExit('workspace version was not updated exactly once')
+          if count != 1 and 'version = "0.144.6"' not in text:
+              raise SystemExit('workspace version could not be resolved to 0.144.6')
           path.write_text(text)
           PY
-            git add codex-rs/Cargo.toml
-          fi
+          git add codex-rs/Cargo.toml
 
           test -z "$(git diff --name-only --diff-filter=U)"
           grep -q '^version = "0.144.6"$' codex-rs/Cargo.toml
 
-          for file in \
-            codex-rs/core/src/exec_policy.rs \
-            codex-rs/core/src/exec_policy_tests.rs \
-            codex-rs/core/tests/suite/exec_policy.rs \
-            codex-rs/models-manager/models.json \
-            codex-rs/shell-command/src/bash.rs \
-            codex-rs/shell-command/src/command_safety/is_dangerous_command.rs; do
-            git diff --quiet "${RELEASE_COMMIT}" -- "${file}" || {
-              echo "synchronized file differs from official release: ${file}" >&2
-              exit 1
-            }
-          done
+          # Verify the two user-facing upstream fixes are present without
+          # requiring Termux-specific files to be byte-identical to upstream.
+          grep -q 'DangerousCommandMatch' codex-rs/core/src/exec_policy.rs
+          grep -q 'ForcedRm' codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
+          test "$(grep -c '"'"'context_window"'"': 272000' codex-rs/models-manager/models.json)" -ge 3
+          if git diff --quiet "${OLD_UPSTREAM_COMMIT}" -- codex-rs/models-manager/models.json; then
+            echo "models.json did not receive the 0.144.6 metadata update" >&2
+            exit 1
+          fi
 
       - name: Update repository release metadata
         shell: bash
@@ -148,4 +149,5 @@ jobs:
         run: |
           set -euo pipefail
           git commit -m "chore(release): sync OpenAI Codex 0.144.6"
+          git merge-base --is-ancestor "${RELEASE_COMMIT}" HEAD
           git push origin "HEAD:${TARGET_BRANCH}"
