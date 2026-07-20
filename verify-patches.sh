@@ -5,6 +5,13 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
+UPSTREAM_TAG="rust-v0.144.6"
+UPSTREAM_COMMIT="5d1fbf26c43abc65a203928b2e31561cb039e06d"
+CODEX_VERSION="0.144.6"
+RELEASE_TAG="termux-v0.144.6"
+RELEASE_WORKFLOW=".github/workflows/termux-release-v0.144.6.yml"
+PATCH_MANIFEST="patches/v0.144.6.md"
+
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; exit 1; }
 
@@ -31,6 +38,37 @@ if [[ "$PUBLIC_SANITIZED_TREE" == 1 ]]; then
   [[ ! -e .forgejo && ! -L .forgejo ]] || fail "public tree must not contain .forgejo automation"
   pass "public tree excludes Forge-only automation"
 fi
+
+[[ -f "$PATCH_MANIFEST" ]] || fail "Codex 0.144.6 patch manifest is missing"
+pass "Codex 0.144.6 patch manifest is present"
+contains "patch manifest pins upstream tag" "$UPSTREAM_TAG" "$PATCH_MANIFEST"
+contains "patch manifest pins upstream commit" "$UPSTREAM_COMMIT" "$PATCH_MANIFEST"
+contains "workspace version is Codex 0.144.6" 'version = "0.144.6"' codex-rs/Cargo.toml
+
+if git cat-file -e "${UPSTREAM_COMMIT}^{commit}" 2>/dev/null; then
+  git merge-base --is-ancestor "$UPSTREAM_COMMIT" HEAD \
+    || fail "official rust-v0.144.6 commit must be an ancestor"
+  pass "official rust-v0.144.6 commit is an ancestor"
+else
+  fail "official rust-v0.144.6 commit is unavailable in repository history"
+fi
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+models = json.loads(Path("codex-rs/models-manager/models.json").read_text())["models"]
+wanted = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+found = {m.get("slug"): m for m in models if m.get("slug") in wanted}
+assert set(found) == wanted, f"missing GPT-5.6 metadata: {wanted - set(found)}"
+for slug, model in found.items():
+    assert model.get("context_window") == 272000, (slug, model.get("context_window"))
+    assert model.get("max_context_window") == 272000, (slug, model.get("max_context_window"))
+print("PASS  GPT-5.6 Sol, Terra and Luna use 272000-token context metadata")
+PY
+
+contains "dangerous command matcher is synchronized" "DangerousCommandMatch" codex-rs/core/src/exec_policy.rs
+contains "forced rm detection is synchronized" "ForcedRm" codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
 
 contains "browser login uses Termux URL opener" "termux-open-url" codex-rs/login/src/server.rs
 contains "release profile uses thin LTO" 'lto = "thin"' codex-rs/Cargo.toml
@@ -88,13 +126,23 @@ PY
 python3 -m py_compile scripts/fetch_rusty_v8_android.py
 pass "V8 fetcher passes Python syntax validation"
 
-WORKFLOW=.github/workflows/termux-npm-build-publish.yml
-contains "workflow builds Cargo lockfile exactly" "cargo build" "$WORKFLOW"
-contains "workflow enforces Cargo lockfile" "--locked" "$WORKFLOW"
-contains "workflow verifies patch inventory" "verify-patches.sh" "$WORKFLOW"
-contains "workflow build job has read-only contents" "contents: read" "$WORKFLOW"
-contains "workflow release job has write permission" "contents: write" "$WORKFLOW"
-if grep -Eq 'uses: actions/(checkout|upload-artifact|download-artifact)@v[0-9]+' "$WORKFLOW"; then
+[[ -f "$RELEASE_WORKFLOW" ]] || fail "Codex 0.144.6 ARM64 release workflow is missing"
+pass "Codex 0.144.6 ARM64 release workflow is present"
+contains "workflow pins Codex version" 'CODEX_VERSION: "0.144.6"' "$RELEASE_WORKFLOW"
+contains "workflow pins upstream tag" 'UPSTREAM_TAG: "rust-v0.144.6"' "$RELEASE_WORKFLOW"
+contains "workflow pins upstream commit" "$UPSTREAM_COMMIT" "$RELEASE_WORKFLOW"
+contains "workflow pins Termux release tag" 'RELEASE_TAG: "termux-v0.144.6"' "$RELEASE_WORKFLOW"
+contains "workflow builds Android ARM64 target" 'aarch64-linux-android' "$RELEASE_WORKFLOW"
+contains "workflow names ARM64 archive" 'codex-termux-aarch64-${CODEX_VERSION}' "$RELEASE_WORKFLOW"
+contains "workflow enforces Cargo lockfile" "--locked" "$RELEASE_WORKFLOW"
+contains "workflow verifies patch inventory" "verify-patches.sh" "$RELEASE_WORKFLOW"
+contains "workflow build job has read-only contents" "contents: read" "$RELEASE_WORKFLOW"
+contains "workflow release job has write permission" "contents: write" "$RELEASE_WORKFLOW"
+not_contains "workflow must not publish x86 artifact" 'codex-termux-x86' "$RELEASE_WORKFLOW"
+not_contains "workflow must not publish x86_64 artifact" 'codex-termux-x86_64' "$RELEASE_WORKFLOW"
+not_contains "workflow must not publish macOS artifact" 'codex-termux-macos' "$RELEASE_WORKFLOW"
+
+if grep -Eq 'uses: actions/(checkout|upload-artifact|download-artifact)@v[0-9]+' "$RELEASE_WORKFLOW"; then
   fail "GitHub-maintained actions must be pinned to immutable commit SHAs"
 fi
 pass "GitHub-maintained actions are pinned to immutable commit SHAs"
@@ -107,4 +155,4 @@ if grep -R -n -E '(curl|wget).*\|[[:space:]]*(sh|bash)' \
 fi
 pass "runtime/release paths do not pipe network content into a shell"
 
-printf '\nAll Termux security and compatibility invariants are present.\n'
+printf '\nAll Codex 0.144.6 Termux security and compatibility invariants are present.\n'

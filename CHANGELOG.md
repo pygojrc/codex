@@ -1,3 +1,7 @@
+# [0.144.6] - 2026-07-18
+
+Synced to OpenAI Codex `rust-v0.144.6`. Includes expanded dangerous-command detection and refreshed GPT-5.6 Sol, Terra, and Luna instructions with corrected 272,000-token context windows. Termux compatibility patches are validated in the following patch-review commit.
+
 # [0.144.4] - 2026-07-14
 
 Synced the complete Termux fork to the final upstream OpenAI Codex
