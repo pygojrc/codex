@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: dispatch-termux-release-v0.144.6
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   dispatch:
