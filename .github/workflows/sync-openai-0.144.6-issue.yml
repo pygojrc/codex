@@ -1,8 +1,7 @@
 name: One-shot ARM sync OpenAI Codex 0.144.6
 
 on:
-  issues:
-    types: [opened]
+  create:
 
 permissions:
   contents: write
@@ -15,14 +14,15 @@ jobs:
   sync:
     if: >-
       github.repository == 'pygojrc/codex' &&
-      github.event.issue.user.login == 'pygojrc' &&
-      github.event.issue.title == '[automation] sync-openai-codex-0.144.6'
+      github.event.ref_type == 'branch' &&
+      github.event.ref == 'trigger-sync-openai-codex-0.144.6'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     env:
       TARGET_BRANCH: sync-termux-v0.144.6
       RELEASE_TAG: rust-v0.144.6
       RELEASE_COMMIT: 5d1fbf26c43abc65a203928b2e31561cb039e06d
+      TRIGGER_BRANCH: trigger-sync-openai-codex-0.144.6
     steps:
       - name: Checkout Termux synchronization branch
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -154,3 +154,10 @@ jobs:
           git commit -m "chore(release): sync OpenAI Codex 0.144.6"
           git merge-base --is-ancestor "${RELEASE_COMMIT}" HEAD
           git push origin "HEAD:${TARGET_BRANCH}"
+
+      - name: Remove trigger branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin --delete "${TRIGGER_BRANCH}" || true
