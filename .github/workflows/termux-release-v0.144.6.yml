@@ -1,0 +1,307 @@
+name: Build and release Codex 0.144.6 for Termux ARM64
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/termux-release-v0.144.6.yml"
+      - "codex-rs/**"
+      - "scripts/fetch_rusty_v8_android.py"
+      - "third_party/v8/**"
+      - "verify-patches.sh"
+      - "patches/v0.144.6.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: termux-release-v0.144.6-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-android-arm64:
+    name: Build Android ARM64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+      artifact_name: ${{ steps.package.outputs.artifact_name }}
+    env:
+      ANDROID_NDK_VERSION: "28.2.13676358"
+      RUST_TOOLCHAIN: "1.95.0"
+      ANDROID_API_LEVEL: "29"
+      CODEX_VERSION: "0.144.6"
+      UPSTREAM_TAG: "rust-v0.144.6"
+      UPSTREAM_COMMIT: "5d1fbf26c43abc65a203928b2e31561cb039e06d"
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: "3"
+      CARGO_PROFILE_RELEASE_LTO: "thin"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+      CARGO_PROFILE_RELEASE_PANIC: "abort"
+      CARGO_PROFILE_RELEASE_STRIP: "symbols"
+
+    steps:
+      - name: Checkout trusted main source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify source and fixed upstream base
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          main_sha="$(git rev-parse origin/main)"
+          test "${source_sha}" = "${main_sha}"
+          git cat-file -e "${UPSTREAM_COMMIT}^{commit}"
+          git merge-base --is-ancestor "${UPSTREAM_COMMIT}" "${source_sha}"
+          test -z "$(git status --porcelain)"
+          grep -q '^version = "0.144.6"$' codex-rs/Cargo.toml
+          test -f patches/v0.144.6.md
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+          echo "Building trusted ${source_sha} from ${UPSTREAM_TAG}."
+
+      - name: Verify Termux security and compatibility patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n verify-patches.sh
+          CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
+
+      - name: Install host dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libssl-dev protobuf-compiler python3 file
+
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install "${RUST_TOOLCHAIN}" \
+            --profile minimal \
+            --target aarch64-linux-android
+
+      - name: Install Android NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ANDROID_HOME:?ANDROID_HOME must be set}"
+          export PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/cmdline-tools/bin:${PATH}"
+          command -v sdkmanager
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "ndk;${ANDROID_NDK_VERSION}"
+          ndk_home="${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}"
+          test -d "${ndk_home}"
+          echo "ANDROID_NDK_HOME=${ndk_home}" >> "${GITHUB_ENV}"
+          echo "ANDROID_NDK_ROOT=${ndk_home}" >> "${GITHUB_ENV}"
+
+      - name: Build Codex for Android ARM64
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME is not set}"
+          export ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"
+          export LIBLZMA_NO_PKG_CONFIG=1
+          export PKG_CONFIG_ALLOW_CROSS=1
+          export OPENSSL_NO_PKG_CONFIG=1
+          export CODEX_SKIP_VENDORED_BWRAP=1
+          export PATH="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
+
+          v8_output="$(python3 scripts/fetch_rusty_v8_android.py)"
+          printf '%s\n' "${v8_output}"
+          RUSTY_V8_ARCHIVE="$(printf '%s\n' "${v8_output}" | sed -n 's/^archive: //p')"
+          RUSTY_V8_SRC_BINDING_PATH="$(printf '%s\n' "${v8_output}" | sed -n 's/^binding: //p')"
+          test -n "${RUSTY_V8_ARCHIVE}"
+          test -n "${RUSTY_V8_SRC_BINDING_PATH}"
+          test -f "${RUSTY_V8_ARCHIVE}"
+          test -f "${RUSTY_V8_SRC_BINDING_PATH}"
+          export RUSTY_V8_ARCHIVE RUSTY_V8_SRC_BINDING_PATH
+
+          export CC_aarch64_linux_android="aarch64-linux-android${ANDROID_API_LEVEL}-clang"
+          export CXX_aarch64_linux_android="aarch64-linux-android${ANDROID_API_LEVEL}-clang++"
+          export AR_aarch64_linux_android="llvm-ar"
+          export RANLIB_aarch64_linux_android="llvm-ranlib"
+
+          builtins="$(find "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64" \
+            -name 'libclang_rt.builtins-aarch64-android.a' 2>/dev/null | head -1)"
+          test -n "${builtins}"
+
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-Clink-arg=-lc++_shared -Clink-arg=-Wl,-rpath,\$ORIGIN -Clink-arg=${builtins}"
+
+          cd codex-rs
+          rustup run "${RUST_TOOLCHAIN}" cargo build \
+            --locked \
+            --target aarch64-linux-android \
+            --release \
+            -p codex-cli
+
+      - name: Package native Termux release
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
+
+          source_sha="${{ steps.source.outputs.sha }}"
+          package_dir="codex-termux-aarch64-${CODEX_VERSION}"
+          archive="${package_dir}.tar.gz"
+          artifact_name="codex-termux-aarch64-${CODEX_VERSION}"
+          mkdir -p "dist/${package_dir}"
+
+          cp codex-rs/target/aarch64-linux-android/release/codex \
+            "dist/${package_dir}/codex"
+          cp "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" \
+            "dist/${package_dir}/libc++_shared.so"
+
+          llvm-strip --strip-all \
+            "dist/${package_dir}/codex" \
+            "dist/${package_dir}/libc++_shared.so"
+          chmod 755 \
+            "dist/${package_dir}/codex" \
+            "dist/${package_dir}/libc++_shared.so"
+
+          cat > "dist/${package_dir}/BUILD-INFO.txt" <<EOF
+          Codex version: ${CODEX_VERSION}
+          Source repository: ${GITHUB_REPOSITORY}
+          Source commit: ${source_sha}
+          Upstream stable tag: ${UPSTREAM_TAG}
+          Upstream stable commit: ${UPSTREAM_COMMIT}
+          Android target: aarch64-linux-android
+          Android API level: ${ANDROID_API_LEVEL}
+          Android NDK: ${ANDROID_NDK_VERSION}
+          Rust toolchain: ${RUST_TOOLCHAIN}
+          EOF
+
+          cat > "dist/${package_dir}/README.txt" <<EOF
+          Codex CLI ${CODEX_VERSION} for Termux / Android ARM64
+          Upstream stable tag: ${UPSTREAM_TAG}
+
+          Verify and install in Termux:
+            sha256sum -c ${archive}.sha256
+            tar -xzf ${archive}
+            cd ${package_dir}
+            install -m 755 codex "\$PREFIX/bin/codex"
+            install -m 755 libc++_shared.so "\$PREFIX/bin/libc++_shared.so"
+            codex --version
+            codex login
+
+          Requirements:
+            - Android 7 or newer
+            - ARM64 device
+            - Termux
+          EOF
+
+          file "dist/${package_dir}/codex"
+          llvm-readelf -h "dist/${package_dir}/codex" | tee "dist/${package_dir}/ELF-HEADER.txt"
+          llvm-readelf -d "dist/${package_dir}/codex" | tee "dist/${package_dir}/ELF-DYNAMIC.txt"
+          grep -q 'Machine:.*AArch64' "dist/${package_dir}/ELF-HEADER.txt"
+          grep -E 'RUNPATH.*\$ORIGIN|RPATH.*\$ORIGIN' "dist/${package_dir}/ELF-DYNAMIC.txt"
+
+          (
+            cd dist
+            tar -czf "${archive}" "${package_dir}"
+            sha256sum "${archive}" > "${archive}.sha256"
+            sha256sum -c "${archive}.sha256"
+          )
+
+          echo "artifact_name=${artifact_name}" >> "${GITHUB_OUTPUT}"
+          echo "PACKAGE_ARCHIVE=dist/${archive}" >> "${GITHUB_ENV}"
+          echo "PACKAGE_CHECKSUM=dist/${archive}.sha256" >> "${GITHUB_ENV}"
+
+      - name: Upload immutable ARM64 build output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: |
+            ${{ env.PACKAGE_ARCHIVE }}
+            ${{ env.PACKAGE_CHECKSUM }}
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: Publish GitHub release
+    needs: build-android-arm64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      CODEX_VERSION: "0.144.6"
+      UPSTREAM_TAG: "rust-v0.144.6"
+      UPSTREAM_COMMIT: "5d1fbf26c43abc65a203928b2e31561cb039e06d"
+      RELEASE_TAG: "termux-v0.144.6"
+      SOURCE_SHA: ${{ needs.build-android-arm64.outputs.source_sha }}
+
+    steps:
+      - name: Download verified build output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.build-android-arm64.outputs.artifact_name }}
+          path: release-assets
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t archives < <(find release-assets -maxdepth 1 -type f -name '*.tar.gz' -print)
+          mapfile -t checksums < <(find release-assets -maxdepth 1 -type f -name '*.tar.gz.sha256' -print)
+          test "${#archives[@]}" -eq 1
+          test "${#checksums[@]}" -eq 1
+          (
+            cd release-assets
+            sha256sum -c "$(basename "${checksums[0]}")"
+          )
+          echo "PACKAGE_ARCHIVE=${archives[0]}" >> "${GITHUB_ENV}"
+          echo "PACKAGE_CHECKSUM=${checksums[0]}" >> "${GITHUB_ENV}"
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          notes_file="${RUNNER_TEMP}/termux-release-notes.md"
+          cat > "${notes_file}" <<EOF
+          ## Codex CLI ${CODEX_VERSION} for Termux
+
+          Native Android ARM64 build based on OpenAI Codex ${UPSTREAM_TAG}.
+
+          - Source commit: \`${SOURCE_SHA}\`
+          - Upstream stable commit: \`${UPSTREAM_COMMIT}\`
+          - Target: \`aarch64-linux-android\`
+          - Archive includes a SHA-256 checksum.
+          - No x86, x86_64, desktop Linux or macOS binary is published.
+
+          ### Verify and install
+
+          \`\`\`bash
+          sha256sum -c codex-termux-aarch64-${CODEX_VERSION}.tar.gz.sha256
+          tar -xzf codex-termux-aarch64-${CODEX_VERSION}.tar.gz
+          cd codex-termux-aarch64-${CODEX_VERSION}
+          install -m 755 codex "\$PREFIX/bin/codex"
+          install -m 755 libc++_shared.so "\$PREFIX/bin/libc++_shared.so"
+          codex --version
+          codex login
+          \`\`\`
+          EOF
+
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+
+          gh release create "${RELEASE_TAG}" \
+            "${PACKAGE_ARCHIVE}" \
+            "${PACKAGE_CHECKSUM}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${SOURCE_SHA}" \
+            --title "Codex ${CODEX_VERSION} for Termux ARM64" \
+            --notes-file "${notes_file}"
