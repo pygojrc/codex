@@ -1,0 +1,156 @@
+name: One-shot ARM sync OpenAI Codex 0.144.6
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-arm-sync-openai-codex-0.144.6
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      github.repository == 'pygojrc/codex' &&
+      github.event.issue.user.login == 'pygojrc' &&
+      github.event.issue.title == '[automation] sync-openai-codex-0.144.6'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    env:
+      TARGET_BRANCH: sync-termux-v0.144.6
+      RELEASE_TAG: rust-v0.144.6
+      RELEASE_COMMIT: 5d1fbf26c43abc65a203928b2e31561cb039e06d
+    steps:
+      - name: Checkout Termux synchronization branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: sync-termux-v0.144.6
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge fixed OpenAI stable release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream https://github.com/openai/codex.git
+          git fetch --no-tags upstream "refs/tags/${RELEASE_TAG}"
+          test "$(git rev-parse FETCH_HEAD)" = "${RELEASE_COMMIT}"
+
+          if git merge-base --is-ancestor "${RELEASE_COMMIT}" HEAD; then
+            echo "Official release is already an ancestor."
+          else
+            set +e
+            git merge --no-commit --no-ff "${RELEASE_COMMIT}"
+            merge_status=$?
+            set -e
+
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            if [ "${merge_status}" -ne 0 ]; then
+              test "${conflicts}" = "codex-rs/Cargo.toml"
+              git checkout --ours codex-rs/Cargo.toml
+            fi
+
+            python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path("codex-rs/Cargo.toml")
+          text = path.read_text()
+          text, count = re.subn(
+              r'(\[workspace\.package\]\nversion = )"(?:0\.144\.4|0\.0\.0)"',
+              r'\1"0.144.6"',
+              text,
+              count=1,
+          )
+          if count != 1 and 'version = "0.144.6"' not in text:
+              raise SystemExit("unable to resolve workspace version")
+          path.write_text(text)
+          PY
+            git add codex-rs/Cargo.toml
+            test -z "$(git diff --name-only --diff-filter=U)"
+          fi
+
+      - name: Verify upstream fixes and Termux patch boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^version = "0.144.6"$' codex-rs/Cargo.toml
+          grep -q 'DangerousCommandMatch' codex-rs/core/src/exec_policy.rs
+          grep -q 'ForcedRm' codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          models = json.loads(Path("codex-rs/models-manager/models.json").read_text())["models"]
+          wanted = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+          found = {m["slug"]: m for m in models if m.get("slug") in wanted}
+          if found.keys() != wanted:
+              raise SystemExit(f"missing GPT-5.6 model metadata: {wanted - found.keys()}")
+          for slug, model in found.items():
+              if model.get("context_window") != 272000 or model.get("max_context_window") != 272000:
+                  raise SystemExit(f"unexpected context window for {slug}")
+          PY
+          CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
+
+      - name: Update version metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          package_path = Path("npm-package/package.json")
+          package = json.loads(package_path.read_text())
+          if package.get("version") not in {"0.144.4", "0.144.6"}:
+              raise SystemExit(f"unexpected package version: {package.get('version')}")
+          package["version"] = "0.144.6"
+          package_path.write_text(json.dumps(package, indent=2) + "\n")
+
+          readme = Path("README.md")
+          readme_text = readme.read_text()
+          readme_text = readme_text.replace("rust-v0.144.4", "rust-v0.144.6")
+          readme_text = readme_text.replace("`0.144.4`", "`0.144.6`")
+          readme.write_text(readme_text)
+
+          changelog = Path("CHANGELOG.md")
+          old = changelog.read_text()
+          heading = "# [0.144.6] - 2026-07-18\n"
+          if heading not in old:
+              changelog.write_text(
+                  heading
+                  + "\nSynced to OpenAI Codex `rust-v0.144.6`. Includes expanded dangerous-command detection and refreshed GPT-5.6 Sol, Terra, and Luna instructions with corrected 272,000-token context windows. Reviewed Termux compatibility patches remain applied.\n\n"
+                  + old
+              )
+          PY
+
+          git rm -f --ignore-unmatch \
+            .sync-0.144.6-trigger \
+            .sync-0.144.6-x64-v2-trigger \
+            .sync-0.144.6-macos-trigger
+          git add codex-rs/Cargo.toml npm-package/package.json README.md CHANGELOG.md
+
+      - name: Validate synchronized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cd codex-rs
+          rustup run 1.95.0 cargo fmt --all -- --check
+          rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+          cd ..
+          git diff --check
+
+      - name: Commit and push synchronized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m "chore(release): sync OpenAI Codex 0.144.6"
+          git merge-base --is-ancestor "${RELEASE_COMMIT}" HEAD
+          git push origin "HEAD:${TARGET_BRANCH}"
