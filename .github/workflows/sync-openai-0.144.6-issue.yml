@@ -50,10 +50,28 @@ jobs:
             merge_status=$?
             set -e
 
-            conflicts="$(git diff --name-only --diff-filter=U)"
             if [ "${merge_status}" -ne 0 ]; then
-              test "${conflicts}" = "codex-rs/Cargo.toml"
-              git checkout --ours codex-rs/Cargo.toml
+              while IFS= read -r conflict; do
+                [ -n "${conflict}" ] || continue
+                case "${conflict}" in
+                  codex-rs/Cargo.toml)
+                    git checkout --ours -- "${conflict}"
+                    ;;
+                  codex-rs/core/src/exec_policy.rs|\
+                  codex-rs/core/src/exec_policy_tests.rs|\
+                  codex-rs/core/tests/suite/exec_policy.rs|\
+                  codex-rs/models-manager/models.json|\
+                  codex-rs/shell-command/src/bash.rs|\
+                  codex-rs/shell-command/src/command_safety/is_dangerous_command.rs)
+                    git checkout --theirs -- "${conflict}"
+                    ;;
+                  *)
+                    echo "unexpected merge conflict: ${conflict}" >&2
+                    exit 1
+                    ;;
+                esac
+                git add -- "${conflict}"
+              done < <(git diff --name-only --diff-filter=U)
             fi
 
             python3 - <<'PY'
