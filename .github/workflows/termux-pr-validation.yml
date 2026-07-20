@@ -2,14 +2,15 @@ name: Validate Termux release changes
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
+      - ".github/workflows/termux-release-v0.144.6.yml"
       - ".github/workflows/termux-npm-build-publish.yml"
       - "codex-rs/**"
       - "scripts/fetch_rusty_v8_android.py"
       - "third_party/v8/**"
       - "verify-patches.sh"
+      - "patches/v0.144.6.md"
   workflow_dispatch: {}
 
 permissions:
@@ -42,11 +43,20 @@ jobs:
           from pathlib import Path
           import yaml
 
-          path = Path('.github/workflows/termux-npm-build-publish.yml')
-          parsed = yaml.safe_load(path.read_text())
-          if not isinstance(parsed, dict):
-              raise SystemExit(f'{path} did not parse as a YAML mapping')
-          print(f'validated YAML: {path}')
+          paths = [
+              Path('.github/workflows/termux-release-v0.144.6.yml'),
+              Path('.github/workflows/termux-npm-build-publish.yml'),
+          ]
+          for path in paths:
+              parsed = yaml.safe_load(path.read_text())
+              if not isinstance(parsed, dict):
+                  raise SystemExit(f'{path} did not parse as a YAML mapping')
+              print(f'validated YAML: {path}')
+
+          patch_manifest = Path('patches/v0.144.6.md')
+          if not patch_manifest.is_file():
+              raise SystemExit(f'missing {patch_manifest}')
+          print(f'validated patch manifest: {patch_manifest}')
           PY
           bash -n verify-patches.sh
           CODEX_PUBLIC_SANITIZED_TREE=1 bash verify-patches.sh
