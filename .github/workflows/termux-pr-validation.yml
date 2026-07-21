@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/termux-release-v0.144.6.yml"
-      - ".github/workflows/termux-npm-build-publish.yml"
       - "codex-rs/**"
       - "scripts/fetch_rusty_v8_android.py"
       - "third_party/v8/**"
@@ -43,15 +42,11 @@ jobs:
           from pathlib import Path
           import yaml
 
-          paths = [
-              Path('.github/workflows/termux-release-v0.144.6.yml'),
-              Path('.github/workflows/termux-npm-build-publish.yml'),
-          ]
-          for path in paths:
-              parsed = yaml.safe_load(path.read_text())
-              if not isinstance(parsed, dict):
-                  raise SystemExit(f'{path} did not parse as a YAML mapping')
-              print(f'validated YAML: {path}')
+          path = Path('.github/workflows/termux-release-v0.144.6.yml')
+          parsed = yaml.safe_load(path.read_text())
+          if not isinstance(parsed, dict):
+              raise SystemExit(f'{path} did not parse as a YAML mapping')
+          print(f'validated YAML: {path}')
 
           patch_manifest = Path('patches/v0.144.6.md')
           if not patch_manifest.is_file():
