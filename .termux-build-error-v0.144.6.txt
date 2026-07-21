@@ -1,0 +1,220 @@
+2026-07-20T16:28:30.9271026Z Recommended packages:
+2026-07-20T16:28:30.9272832Z   libprotobuf-dev
+2026-07-20T16:28:30.9438699Z The following NEW packages will be installed:
+2026-07-20T16:28:30.9442517Z   libprotobuf32t64 libprotoc32t64 protobuf-compiler
+2026-07-20T16:28:30.9605912Z 0 upgraded, 3 newly installed, 0 to remove and 25 not upgraded.
+2026-07-20T16:28:30.9606484Z Need to get 1635 kB of archives.
+2026-07-20T16:28:30.9606834Z After this operation, 5530 kB of additional disk space will be used.
+2026-07-20T16:28:30.9607259Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-07-20T16:28:30.9943268Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotobuf32t64 amd64 3.21.12-8.2ubuntu0.3 [923 kB]
+2026-07-20T16:28:31.0123029Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotoc32t64 amd64 3.21.12-8.2ubuntu0.3 [683 kB]
+2026-07-20T16:28:31.0275526Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 protobuf-compiler amd64 3.21.12-8.2ubuntu0.3 [29.0 kB]
+2026-07-20T16:28:31.2633127Z Fetched 1635 kB in 0s (21.1 MB/s)
+2026-07-20T16:28:31.2867605Z Selecting previously unselected package libprotobuf32t64:amd64.
+2026-07-20T16:28:31.3184695Z (Reading database ... 
+2026-07-20T16:28:31.3185395Z (Reading database ... 5%
+2026-07-20T16:28:31.3186075Z (Reading database ... 10%
+2026-07-20T16:28:31.3186700Z (Reading database ... 15%
+2026-07-20T16:28:31.3187121Z (Reading database ... 20%
+2026-07-20T16:28:31.3187497Z (Reading database ... 25%
+2026-07-20T16:28:31.3187891Z (Reading database ... 30%
+2026-07-20T16:28:31.3188325Z (Reading database ... 35%
+2026-07-20T16:28:31.3188701Z (Reading database ... 40%
+2026-07-20T16:28:31.3189068Z (Reading database ... 45%
+2026-07-20T16:28:31.3189439Z (Reading database ... 50%
+2026-07-20T16:28:31.3239606Z (Reading database ... 55%
+2026-07-20T16:28:31.5022700Z (Reading database ... 60%
+2026-07-20T16:28:31.6502558Z (Reading database ... 65%
+2026-07-20T16:28:31.8535261Z (Reading database ... 70%
+2026-07-20T16:28:31.9544787Z (Reading database ... 75%
+2026-07-20T16:28:32.1565406Z (Reading database ... 80%
+2026-07-20T16:28:32.3544234Z (Reading database ... 85%
+2026-07-20T16:28:32.5448915Z (Reading database ... 90%
+2026-07-20T16:28:32.7175899Z (Reading database ... 95%
+2026-07-20T16:28:32.7176351Z (Reading database ... 100%
+2026-07-20T16:28:32.7177190Z (Reading database ... 202507 files and directories currently installed.)
+2026-07-20T16:28:32.7215824Z Preparing to unpack .../libprotobuf32t64_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-07-20T16:28:32.7256857Z Unpacking libprotobuf32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-07-20T16:28:32.7634107Z Selecting previously unselected package libprotoc32t64:amd64.
+2026-07-20T16:28:32.7757093Z Preparing to unpack .../libprotoc32t64_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-07-20T16:28:32.7767920Z Unpacking libprotoc32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-07-20T16:28:32.8056287Z Selecting previously unselected package protobuf-compiler.
+2026-07-20T16:28:32.8179119Z Preparing to unpack .../protobuf-compiler_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-07-20T16:28:32.8190005Z Unpacking protobuf-compiler (3.21.12-8.2ubuntu0.3) ...
+2026-07-20T16:28:32.8624598Z Setting up libprotobuf32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-07-20T16:28:32.8654866Z Setting up libprotoc32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-07-20T16:28:32.8687985Z Setting up protobuf-compiler (3.21.12-8.2ubuntu0.3) ...
+2026-07-20T16:28:32.8715755Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-07-20T16:28:32.8739936Z Not building database; man-db/auto-update is not 'true'.
+2026-07-20T16:28:32.8754232Z Processing triggers for libc-bin (2.39-0ubuntu8.7) ...
+2026-07-20T16:28:33.5401528Z 
+2026-07-20T16:28:33.5402054Z Running kernel seems to be up-to-date.
+2026-07-20T16:28:33.5402558Z 
+2026-07-20T16:28:33.5402679Z No services need to be restarted.
+2026-07-20T16:28:33.5402869Z 
+2026-07-20T16:28:33.5422061Z No containers need to be restarted.
+2026-07-20T16:28:33.5422377Z 
+2026-07-20T16:28:33.5422584Z No user sessions are running outdated binaries.
+2026-07-20T16:28:33.5422961Z 
+2026-07-20T16:28:33.5423200Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-07-20T16:28:34.2568474Z ##[group]Run set -euo pipefail
+2026-07-20T16:28:34.2568813Z [36;1mset -euo pipefail[0m
+2026-07-20T16:28:34.2569107Z [36;1mrustup toolchain install "${RUST_TOOLCHAIN}" \[0m
+2026-07-20T16:28:34.2569432Z [36;1m  --profile minimal \[0m
+2026-07-20T16:28:34.2569696Z [36;1m  --target aarch64-linux-android[0m
+2026-07-20T16:28:34.2630739Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T16:28:34.2631117Z env:
+2026-07-20T16:28:34.2631583Z   ANDROID_NDK_VERSION: 28.2.13676358
+2026-07-20T16:28:34.2631854Z   RUST_TOOLCHAIN: 1.95.0
+2026-07-20T16:28:34.2632081Z   ANDROID_API_LEVEL: 29
+2026-07-20T16:28:34.2632295Z   CODEX_VERSION: 0.144.6
+2026-07-20T16:28:34.2632520Z   UPSTREAM_TAG: rust-v0.144.6
+2026-07-20T16:28:34.2632826Z   UPSTREAM_COMMIT: 5d1fbf26c43abc65a203928b2e31561cb039e06d
+2026-07-20T16:28:34.2633177Z   CARGO_PROFILE_RELEASE_OPT_LEVEL: 3
+2026-07-20T16:28:34.2633452Z   CARGO_PROFILE_RELEASE_LTO: thin
+2026-07-20T16:28:34.2633766Z   CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+2026-07-20T16:28:34.2634046Z   CARGO_PROFILE_RELEASE_PANIC: abort
+2026-07-20T16:28:34.2634325Z   CARGO_PROFILE_RELEASE_STRIP: symbols
+2026-07-20T16:28:34.2634578Z ##[endgroup]
+2026-07-20T16:28:34.3273228Z info: syncing channel updates for 1.95.0-x86_64-unknown-linux-gnu
+2026-07-20T16:28:34.4355372Z info: latest update on 2026-04-16 for version 1.95.0 (59807616e 2026-04-14)
+2026-07-20T16:28:34.4373165Z info: downloading 4 components
+2026-07-20T16:28:43.5168990Z 
+2026-07-20T16:28:43.5239487Z   1.95.0-x86_64-unknown-linux-gnu installed - rustc 1.95.0 (59807616e 2026-04-14)
+2026-07-20T16:28:43.5239854Z 
+2026-07-20T16:28:43.5319919Z ##[group]Run set -euo pipefail
+2026-07-20T16:28:43.5320287Z [36;1mset -euo pipefail[0m
+2026-07-20T16:28:43.5320591Z [36;1m: "${ANDROID_HOME:?ANDROID_HOME must be set}"[0m
+2026-07-20T16:28:43.5321161Z [36;1mexport PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/cmdline-tools/bin:${PATH}"[0m
+2026-07-20T16:28:43.5321962Z [36;1mcommand -v sdkmanager[0m
+2026-07-20T16:28:43.5322267Z [36;1myes | sdkmanager --licenses >/dev/null || true[0m
+2026-07-20T16:28:43.5322625Z [36;1msdkmanager "ndk;${ANDROID_NDK_VERSION}"[0m
+2026-07-20T16:28:43.5322998Z [36;1mndk_home="${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}"[0m
+2026-07-20T16:28:43.5323335Z [36;1mtest -d "${ndk_home}"[0m
+2026-07-20T16:28:43.5323659Z [36;1mecho "ANDROID_NDK_HOME=${ndk_home}" >> "${GITHUB_ENV}"[0m
+2026-07-20T16:28:43.5324045Z [36;1mecho "ANDROID_NDK_ROOT=${ndk_home}" >> "${GITHUB_ENV}"[0m
+2026-07-20T16:28:43.5384216Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T16:28:43.5384601Z env:
+2026-07-20T16:28:43.5384801Z   ANDROID_NDK_VERSION: 28.2.13676358
+2026-07-20T16:28:43.5385067Z   RUST_TOOLCHAIN: 1.95.0
+2026-07-20T16:28:43.5385306Z   ANDROID_API_LEVEL: 29
+2026-07-20T16:28:43.5385528Z   CODEX_VERSION: 0.144.6
+2026-07-20T16:28:43.5385756Z   UPSTREAM_TAG: rust-v0.144.6
+2026-07-20T16:28:43.5386067Z   UPSTREAM_COMMIT: 5d1fbf26c43abc65a203928b2e31561cb039e06d
+2026-07-20T16:28:43.5386408Z   CARGO_PROFILE_RELEASE_OPT_LEVEL: 3
+2026-07-20T16:28:43.5386671Z   CARGO_PROFILE_RELEASE_LTO: thin
+2026-07-20T16:28:43.5386933Z   CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+2026-07-20T16:28:43.5387207Z   CARGO_PROFILE_RELEASE_PANIC: abort
+2026-07-20T16:28:43.5387469Z   CARGO_PROFILE_RELEASE_STRIP: symbols
+2026-07-20T16:28:43.5387891Z ##[endgroup]
+2026-07-20T16:28:43.5479878Z /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
+2026-07-20T16:28:49.4646076Z yes: standard output: Broken pipe
+2026-07-20T16:28:50.1742743Z Loading package information...                                                  
+2026-07-20T16:28:50.2774015Z Loading local repository...                                                     
+2026-07-20T16:28:50.2777512Z [                                       ] 3% Loading local repository...        
+2026-07-20T16:28:50.2867696Z [                                       ] 3% Fetch remote repository...         
+2026-07-20T16:28:50.6273237Z [=                                      ] 3% Fetch remote repository...         
+2026-07-20T16:28:50.7062116Z [=                                      ] 4% Fetch remote repository...         
+2026-07-20T16:28:50.7386116Z [=                                      ] 5% Fetch remote repository...         
+2026-07-20T16:28:50.7857407Z [==                                     ] 5% Fetch remote repository...         
+2026-07-20T16:28:50.8751110Z [==                                     ] 6% Fetch remote repository...         
+2026-07-20T16:28:50.9584024Z [==                                     ] 7% Fetch remote repository...         
+2026-07-20T16:28:50.9612208Z [==                                     ] 7% Computing updates...               
+2026-07-20T16:28:50.9720958Z [===                                    ] 8% Computing updates...               
+2026-07-20T16:28:50.9790529Z [===                                    ] 10% Computing updates...              
+2026-07-20T16:28:50.9791795Z [=======================================] 100% Computing updates...             
+2026-07-20T16:28:50.9792444Z 
+2026-07-20T16:28:51.0047569Z ##[group]Run set -euo pipefail
+2026-07-20T16:28:51.0047916Z [36;1mset -euo pipefail[0m
+2026-07-20T16:28:51.0048227Z [36;1m: "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME is not set}"[0m
+2026-07-20T16:28:51.0048599Z [36;1mexport ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"[0m
+2026-07-20T16:28:51.0048928Z [36;1mexport LIBLZMA_NO_PKG_CONFIG=1[0m
+2026-07-20T16:28:51.0049215Z [36;1mexport PKG_CONFIG_ALLOW_CROSS=1[0m
+2026-07-20T16:28:51.0049492Z [36;1mexport OPENSSL_NO_PKG_CONFIG=1[0m
+2026-07-20T16:28:51.0049777Z [36;1mexport CODEX_SKIP_VENDORED_BWRAP=1[0m
+2026-07-20T16:28:51.0050224Z [36;1mexport PATH="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"[0m
+2026-07-20T16:28:51.0050644Z [36;1m[0m
+2026-07-20T16:28:51.0050912Z [36;1mv8_output="$(python3 scripts/fetch_rusty_v8_android.py)"[0m
+2026-07-20T16:28:51.0051558Z [36;1mprintf '%s\n' "${v8_output}"[0m
+2026-07-20T16:28:51.0052028Z [36;1mRUSTY_V8_ARCHIVE="$(printf '%s\n' "${v8_output}" | sed -n 's/^archive: //p')"[0m
+2026-07-20T16:28:51.0052599Z [36;1mRUSTY_V8_SRC_BINDING_PATH="$(printf '%s\n' "${v8_output}" | sed -n 's/^binding: //p')"[0m
+2026-07-20T16:28:51.0053032Z [36;1mtest -n "${RUSTY_V8_ARCHIVE}"[0m
+2026-07-20T16:28:51.0053332Z [36;1mtest -n "${RUSTY_V8_SRC_BINDING_PATH}"[0m
+2026-07-20T16:28:51.0053663Z [36;1mtest -f "${RUSTY_V8_ARCHIVE}"[0m
+2026-07-20T16:28:51.0053954Z [36;1mtest -f "${RUSTY_V8_SRC_BINDING_PATH}"[0m
+2026-07-20T16:28:51.0054302Z [36;1mexport RUSTY_V8_ARCHIVE RUSTY_V8_SRC_BINDING_PATH[0m
+2026-07-20T16:28:51.0054616Z [36;1m[0m
+2026-07-20T16:28:51.0054969Z [36;1mexport CC_aarch64_linux_android="aarch64-linux-android${ANDROID_API_LEVEL}-clang"[0m
+2026-07-20T16:28:51.0055575Z [36;1mexport CXX_aarch64_linux_android="aarch64-linux-android${ANDROID_API_LEVEL}-clang++"[0m
+2026-07-20T16:28:51.0056051Z [36;1mexport AR_aarch64_linux_android="llvm-ar"[0m
+2026-07-20T16:28:51.0056400Z [36;1mexport RANLIB_aarch64_linux_android="llvm-ranlib"[0m
+2026-07-20T16:28:51.0056709Z [36;1m[0m
+2026-07-20T16:28:51.0057030Z [36;1mbuiltins="$(find "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64" \[0m
+2026-07-20T16:28:51.0057572Z [36;1m  -name 'libclang_rt.builtins-aarch64-android.a' 2>/dev/null | head -1)"[0m
+2026-07-20T16:28:51.0057990Z [36;1mtest -n "${builtins}"[0m
+2026-07-20T16:28:51.0058404Z [36;1m[0m
+2026-07-20T16:28:51.0058925Z [36;1mexport CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-Clink-arg=-lc++_shared -Clink-arg=-Wl,-rpath,\$ORIGIN -Clink-arg=${builtins}"[0m
+2026-07-20T16:28:51.0059513Z [36;1m[0m
+2026-07-20T16:28:51.0059693Z [36;1mcd codex-rs[0m
+2026-07-20T16:28:51.0059950Z [36;1mrustup run "${RUST_TOOLCHAIN}" cargo build \[0m
+2026-07-20T16:28:51.0060252Z [36;1m  --locked \[0m
+2026-07-20T16:28:51.0060498Z [36;1m  --target aarch64-linux-android \[0m
+2026-07-20T16:28:51.0060783Z [36;1m  --release \[0m
+2026-07-20T16:28:51.0061006Z [36;1m  -p codex-cli[0m
+2026-07-20T16:28:51.0118972Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T16:28:51.0119333Z env:
+2026-07-20T16:28:51.0119536Z   ANDROID_NDK_VERSION: 28.2.13676358
+2026-07-20T16:28:51.0119818Z   RUST_TOOLCHAIN: 1.95.0
+2026-07-20T16:28:51.0120046Z   ANDROID_API_LEVEL: 29
+2026-07-20T16:28:51.0120265Z   CODEX_VERSION: 0.144.6
+2026-07-20T16:28:51.0120491Z   UPSTREAM_TAG: rust-v0.144.6
+2026-07-20T16:28:51.0120814Z   UPSTREAM_COMMIT: 5d1fbf26c43abc65a203928b2e31561cb039e06d
+2026-07-20T16:28:51.0121154Z   CARGO_PROFILE_RELEASE_OPT_LEVEL: 3
+2026-07-20T16:28:51.0121652Z   CARGO_PROFILE_RELEASE_LTO: thin
+2026-07-20T16:28:51.0121917Z   CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 16
+2026-07-20T16:28:51.0122194Z   CARGO_PROFILE_RELEASE_PANIC: abort
+2026-07-20T16:28:51.0122457Z   CARGO_PROFILE_RELEASE_STRIP: symbols
+2026-07-20T16:28:51.0122787Z   ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
+2026-07-20T16:28:51.0123191Z   ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/28.2.13676358
+2026-07-20T16:28:51.0123519Z ##[endgroup]
+2026-07-20T16:28:51.6512243Z resolved v8 crate version: 149.2.0
+2026-07-20T16:28:51.6513094Z release tag: rusty-v8-v149.2.0
+2026-07-20T16:28:51.6513808Z repository: DioNanos/codex-termux
+2026-07-20T16:28:51.6514800Z archive: /home/runner/work/codex/codex/.artifacts/rusty_v8/rusty-v8-v149.2.0/librusty_v8_release_aarch64-linux-android.a.gz
+2026-07-20T16:28:51.6516117Z archive sha256: af238c22e12ccaca5cf0224863fe9d2f5cf0e1051acffee26d958858e5eb31ee
+2026-07-20T16:28:51.6517368Z binding: /home/runner/work/codex/codex/.artifacts/rusty_v8/rusty-v8-v149.2.0/src_binding_release_aarch64-linux-android.rs
+2026-07-20T16:28:51.6518552Z binding sha256: 3ef8ac94e16f9d2d52ab0ed57f13319f844d726f341f632c0f4684d456069d63
+2026-07-20T16:28:51.6519145Z 
+2026-07-20T16:28:51.6519860Z export RUSTY_V8_ARCHIVE="/home/runner/work/codex/codex/.artifacts/rusty_v8/rusty-v8-v149.2.0/librusty_v8_release_aarch64-linux-android.a.gz"
+2026-07-20T16:28:51.6521641Z export RUSTY_V8_SRC_BINDING_PATH="/home/runner/work/codex/codex/.artifacts/rusty_v8/rusty-v8-v149.2.0/src_binding_release_aarch64-linux-android.rs"
+2026-07-20T16:28:52.2817206Z     Updating git repository `https://github.com/openai-oss-forks/tungstenite-rs`
+2026-07-20T16:28:52.6666513Z     Updating git repository `https://github.com/nornagon/crossterm`
+2026-07-20T16:28:54.0025132Z     Updating git repository `https://github.com/nornagon/ratatui`
+2026-07-20T16:28:54.5243546Z     Updating git repository `https://github.com/openai-oss-forks/tokio-tungstenite`
+2026-07-20T16:28:54.6425285Z     Updating crates.io index
+2026-07-20T16:28:54.7162130Z     Updating git repository `https://github.com/dzbarsky/rules_rust`
+2026-07-20T16:29:00.2395407Z     Updating crates.io index
+2026-07-20T16:29:00.2414940Z     Updating git repository `https://github.com/helix-editor/nucleo.git`
+2026-07-20T16:29:00.6123715Z     Updating git repository `https://github.com/juberti-oai/rust-sdks.git`
+2026-07-20T16:29:01.7515818Z     Updating git submodule `https://github.com/livekit/protocol`
+2026-07-20T16:29:02.7993964Z     Updating git submodule `https://chromium.googlesource.com/libyuv/libyuv`
+2026-07-20T16:29:09.6374338Z error: cannot update the lock file /home/runner/work/codex/codex/codex-rs/Cargo.lock because --locked was passed to prevent this
+2026-07-20T16:29:09.6375641Z help: to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.
+2026-07-20T16:29:09.6586448Z ##[error]Process completed with exit code 101.
+2026-07-20T16:29:09.6723230Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T16:29:09.6724809Z Post job cleanup.
+2026-07-20T16:29:09.7542951Z [command]/usr/bin/git version
+2026-07-20T16:29:09.7587437Z git version 2.54.0
+2026-07-20T16:29:09.7633658Z Temporarily overriding HOME='/home/runner/work/_temp/d1ac701f-5e5c-4221-b26e-c5612009220f' before making global git config changes
+2026-07-20T16:29:09.7635054Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-20T16:29:09.7638357Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/codex/codex
+2026-07-20T16:29:09.7678477Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-20T16:29:09.7714265Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-20T16:29:09.7966476Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-20T16:29:09.8001719Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-20T16:29:09.8266548Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-20T16:29:09.8304442Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-20T16:29:09.8692357Z Evaluate and set job outputs
+2026-07-20T16:29:09.8700162Z Set output 'source_sha'
+2026-07-20T16:29:09.8702760Z Cleaning up orphan processes
+2026-07-20T16:29:09.8998427Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
