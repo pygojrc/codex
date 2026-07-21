@@ -29,11 +29,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           RUN_ID: '29804166646'
+          WORKFLOW: termux-release-v0.144.6.yml
         shell: bash
         run: |
           set -euo pipefail
           gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}" > .termux-release-run.json
           gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" > .termux-release-jobs.json
+          gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/runs?per_page=30" > .termux-release-runs.json
 
       - name: Commit inspection result
         shell: bash
@@ -42,7 +44,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm -f INSPECT_TERMUX_RUN.md
-          git add .termux-release-run.json .termux-release-jobs.json
+          git add .termux-release-run.json .termux-release-jobs.json .termux-release-runs.json
           git add -u INSPECT_TERMUX_RUN.md
-          git commit -m 'ci: capture Termux release run state'
+          git commit -m 'ci: capture Termux release workflow state'
           git push origin HEAD:inspect-termux-run-29804166646
