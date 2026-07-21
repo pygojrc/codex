@@ -1,0 +1,49 @@
+name: Capture Termux ARM64 build tail
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  capture:
+    if: >-
+      github.repository == 'pygojrc/codex' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'capture-termux-build-tail'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout capture branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: capture-termux-build-tail
+          persist-credentials: true
+
+      - name: Capture live build log tail
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          JOB_ID: '88550341164'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${REPOSITORY}/actions/jobs/${JOB_ID}/logs" > full-build.log
+          tail -n 260 full-build.log > .termux-live-build-tail.txt
+          rm full-build.log
+
+      - name: Commit capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f CAPTURE_TERMUX_BUILD.md
+          git add .termux-live-build-tail.txt
+          git add -u CAPTURE_TERMUX_BUILD.md || true
+          git commit -m 'ci: capture live Termux ARM64 build tail'
+          git push origin HEAD:capture-termux-build-tail
