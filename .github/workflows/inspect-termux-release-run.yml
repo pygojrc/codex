@@ -1,4 +1,4 @@
-name: Inspect Termux release run
+name: Cancel duplicate Termux release run
 
 on:
   pull_request:
@@ -6,11 +6,11 @@ on:
     branches: [main]
 
 permissions:
-  actions: read
-  contents: write
+  actions: write
+  contents: read
 
 jobs:
-  inspect:
+  cancel-duplicate:
     if: >-
       github.repository == 'pygojrc/codex' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -18,31 +18,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Checkout inspection branch
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          ref: inspect-termux-run-29804166646
-          persist-credentials: true
-
-      - name: Capture run state
+      - name: Cancel duplicate pending release run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           RUN_ID: '29804166646'
-          WORKFLOW: termux-release-v0.144.6.yml
         shell: bash
         run: |
           set -euo pipefail
-          gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}" > .termux-release-run.json
-          gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" > .termux-release-jobs.json
-          gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/runs?per_page=30" > .termux-release-runs.json
-
-      - name: Commit inspection result
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .termux-release-run.json .termux-release-jobs.json .termux-release-runs.json
-          git commit -m 'ci: capture Termux release workflow state'
-          git push origin HEAD:inspect-termux-run-29804166646
+          gh api --method POST "repos/${REPOSITORY}/actions/runs/${RUN_ID}/cancel"
