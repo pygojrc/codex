@@ -1,0 +1,56 @@
+name: Dispatch Termux 0.144.6 ARM64 release retry
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: dispatch-termux-release-v0.144.6-r2
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    if: >-
+      github.repository == 'pygojrc/codex' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'release-trigger-termux-v0.144.6-r2'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Dispatch trusted ARM64 release workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW: termux-release-v0.144.6.yml
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          requested_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          gh api \
+            --method POST \
+            -H 'Accept: application/vnd.github+json' \
+            "repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/dispatches" \
+            -f ref=main
+
+          for attempt in $(seq 1 24); do
+            run_id="$(gh api \
+              "repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&branch=main&per_page=10" \
+              --jq ".workflow_runs[] | select(.head_sha == \"${main_sha}\" and .created_at >= \"${requested_at}\") | .id" \
+              | head -1)"
+            if [ -n "${run_id}" ]; then
+              echo "TERMUX_RELEASE_RUN_ID=${run_id}"
+              echo "TERMUX_RELEASE_SOURCE_SHA=${main_sha}"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo 'Release workflow dispatch was accepted but no run became visible.' >&2
+          exit 1
