@@ -18,7 +18,7 @@ jobs:
     if: >-
       github.repository == 'pygojrc/codex' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'release-trigger-termux-v0.144.6-r2'
+      github.head_ref == 'termux-01446-r2'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
