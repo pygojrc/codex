@@ -1,7 +1,7 @@
 {
   "name": "codex-termux-native",
-  "version": "0.144.6",
-  "description": "OpenAI Codex CLI rust-v0.144.6 packaged as a native Android Termux ARM64 build with checksum-pinned V8 inputs and repository-owned update diagnostics.",
+  "version": "0.146.0",
+  "description": "OpenAI Codex CLI rust-v0.146.0 packaged as a native Android Termux ARM64 build with checksum-pinned V8 inputs and repository-owned update diagnostics.",
   "type": "module",
   "main": "bin/codex.js",
   "bin": {
