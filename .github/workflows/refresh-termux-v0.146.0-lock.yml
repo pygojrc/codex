@@ -24,61 +24,17 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Update only workspace-local lock versions
+      - name: Refresh workspace lock entries
         shell: bash
         run: |
           set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal
           cp codex-rs/Cargo.lock "${RUNNER_TEMP}/Cargo.lock.before"
-          python3 - <<'PY'
-          import re
-          import tomllib
-          from pathlib import Path
+          cd codex-rs
+          rustup run 1.95.0 cargo update --workspace
+          rustup run 1.95.0 cargo metadata --locked --format-version 1 >/dev/null
 
-          path = Path('codex-rs/Cargo.lock')
-          text = path.read_text()
-          lock = tomllib.loads(text)
-          local = {
-              p['name']
-              for p in lock['package']
-              if 'source' not in p and p.get('version') in {'0.0.0', '0.144.6'}
-          }
-          if not local:
-              raise SystemExit('no stale workspace-local package versions found')
-
-          chunks = text.split('[[package]]')
-          output = [chunks[0]]
-          changed = []
-          for raw in chunks[1:]:
-              block = '[[package]]' + raw
-              parsed = tomllib.loads(block)['package'][0]
-              if parsed['name'] in local and 'source' not in parsed:
-                  old = parsed['version']
-                  block, count = re.subn(
-                      r'(?m)^version = "(?:0\.0\.0|0\.144\.6)"$',
-                      'version = "0.146.0"',
-                      block,
-                      count=1,
-                  )
-                  if count != 1:
-                      raise SystemExit(f'could not update local package {parsed["name"]}')
-                  changed.append((parsed['name'], old))
-              output.append(block)
-
-          text = ''.join(output)
-          for name in sorted(local, key=len, reverse=True):
-              escaped = re.escape(name)
-              text = re.sub(
-                  rf'"{escaped} (?:0\.0\.0|0\.144\.6)"',
-                  f'"{name} 0.146.0"',
-                  text,
-              )
-          path.write_text(text)
-          print(f'updated {len(changed)} workspace-local package versions')
-          for name, old in changed:
-              print(f'{name}: {old} -> 0.146.0')
-          PY
-
-      - name: Audit minimal lock-file delta
+      - name: Audit workspace-only lock delta
         shell: bash
         run: |
           set -euo pipefail
@@ -98,7 +54,9 @@ jobs:
           old_pkgs = {key(p): p for p in old['package']}
           new_pkgs = {key(p): p for p in new['package']}
           if old_pkgs.keys() != new_pkgs.keys():
-              raise SystemExit('package set changed')
+              added = sorted(new_pkgs.keys() - old_pkgs.keys())
+              removed = sorted(old_pkgs.keys() - new_pkgs.keys())
+              raise SystemExit(f'package set changed; added={added}, removed={removed}')
 
           local_names = {name for name, source in old_pkgs if source is None}
           suffix = re.compile(r'^(.*) (?:0\.0\.0|0\.144\.6|0\.146\.0)$')
@@ -115,7 +73,7 @@ jobs:
               name, source = pkg_key
               if source is not None:
                   if before != after:
-                      raise SystemExit(f'external package changed: {name}')
+                      raise SystemExit(f'external package changed: {name} {source}')
                   continue
 
               b = copy.deepcopy(before)
@@ -135,12 +93,8 @@ jobs:
 
           if changes == 0:
               raise SystemExit('no audited workspace version changes')
-          print(f'audited {changes} minimal workspace lock updates')
+          print(f'audited {changes} workspace-only lock updates')
           PY
-          rustup toolchain install 1.95.0 --profile minimal
-          cd codex-rs
-          rustup run 1.95.0 cargo metadata --locked --format-version 1 >/dev/null
-          cd ..
           git diff --check
           git diff --stat -- codex-rs/Cargo.lock
 
