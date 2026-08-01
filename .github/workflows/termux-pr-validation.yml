@@ -13,9 +13,25 @@ on:
   workflow_dispatch: {}
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
+  inspect-release-run:
+    if: github.head_ref == 'inspect-v01460-current'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Print recent Termux 0.146.0 release runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${REPOSITORY}/actions/workflows/termux-release-v0.146.0.yml/runs?per_page=10" \
+            --jq '.workflow_runs[] | {id, run_number, event, status, conclusion, head_sha, created_at, updated_at, html_url}'
+
   validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
