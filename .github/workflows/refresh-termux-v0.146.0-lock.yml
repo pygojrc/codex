@@ -24,17 +24,61 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Refresh lock file
+      - name: Update only workspace-local lock versions
         shell: bash
         run: |
           set -euo pipefail
-          rustup toolchain install 1.95.0 --profile minimal
           cp codex-rs/Cargo.lock "${RUNNER_TEMP}/Cargo.lock.before"
-          cd codex-rs
-          rustup run 1.95.0 cargo generate-lockfile
-          rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+          python3 - <<'PY'
+          import re
+          import tomllib
+          from pathlib import Path
 
-      - name: Audit lock-file delta
+          path = Path('codex-rs/Cargo.lock')
+          text = path.read_text()
+          lock = tomllib.loads(text)
+          local = {
+              p['name']
+              for p in lock['package']
+              if 'source' not in p and p.get('version') in {'0.0.0', '0.144.6'}
+          }
+          if not local:
+              raise SystemExit('no stale workspace-local package versions found')
+
+          chunks = text.split('[[package]]')
+          output = [chunks[0]]
+          changed = []
+          for raw in chunks[1:]:
+              block = '[[package]]' + raw
+              parsed = tomllib.loads(block)['package'][0]
+              if parsed['name'] in local and 'source' not in parsed:
+                  old = parsed['version']
+                  block, count = re.subn(
+                      r'(?m)^version = "(?:0\.0\.0|0\.144\.6)"$',
+                      'version = "0.146.0"',
+                      block,
+                      count=1,
+                  )
+                  if count != 1:
+                      raise SystemExit(f'could not update local package {parsed["name"]}')
+                  changed.append((parsed['name'], old))
+              output.append(block)
+
+          text = ''.join(output)
+          for name in sorted(local, key=len, reverse=True):
+              escaped = re.escape(name)
+              text = re.sub(
+                  rf'"{escaped} (?:0\.0\.0|0\.144\.6)"',
+                  f'"{name} 0.146.0"',
+                  text,
+              )
+          path.write_text(text)
+          print(f'updated {len(changed)} workspace-local package versions')
+          for name, old in changed:
+              print(f'{name}: {old} -> 0.146.0')
+          PY
+
+      - name: Audit minimal lock-file delta
         shell: bash
         run: |
           set -euo pipefail
@@ -45,8 +89,7 @@ jobs:
           import tomllib
           from pathlib import Path
 
-          old_path = Path(os.environ['RUNNER_TEMP']) / 'Cargo.lock.before'
-          old = tomllib.loads(old_path.read_text())
+          old = tomllib.loads((Path(os.environ['RUNNER_TEMP']) / 'Cargo.lock.before').read_text())
           new = tomllib.loads(Path('codex-rs/Cargo.lock').read_text())
 
           def key(pkg):
@@ -55,26 +98,24 @@ jobs:
           old_pkgs = {key(p): p for p in old['package']}
           new_pkgs = {key(p): p for p in new['package']}
           if old_pkgs.keys() != new_pkgs.keys():
-              added = sorted(new_pkgs.keys() - old_pkgs.keys())
-              removed = sorted(old_pkgs.keys() - new_pkgs.keys())
-              raise SystemExit(f'package set changed; added={added}, removed={removed}')
+              raise SystemExit('package set changed')
 
-          local_names = {name for (name, source) in old_pkgs if source is None}
+          local_names = {name for name, source in old_pkgs if source is None}
           suffix = re.compile(r'^(.*) (?:0\.0\.0|0\.144\.6|0\.146\.0)$')
 
           def normalize_dep(dep):
-              m = suffix.match(dep)
-              if m and m.group(1) in local_names:
-                  return m.group(1)
+              match = suffix.match(dep)
+              if match and match.group(1) in local_names:
+                  return match.group(1)
               return dep
 
-          changed_local = []
+          changes = 0
           for pkg_key, before in old_pkgs.items():
               after = new_pkgs[pkg_key]
               name, source = pkg_key
               if source is not None:
                   if before != after:
-                      raise SystemExit(f'external package changed: {name} {source}')
+                      raise SystemExit(f'external package changed: {name}')
                   continue
 
               b = copy.deepcopy(before)
@@ -85,17 +126,21 @@ jobs:
               a_deps = sorted(normalize_dep(x) for x in a.pop('dependencies', []))
               if b != a or b_deps != a_deps:
                   raise SystemExit(f'local package structure changed: {name}')
-              if after_version != '0.146.0':
-                  raise SystemExit(f'local package {name} has unexpected version {after_version}')
-              if before_version != after_version:
-                  changed_local.append((name, before_version, after_version))
+              if before_version in {'0.0.0', '0.144.6'}:
+                  if after_version != '0.146.0':
+                      raise SystemExit(f'local package {name} was not updated to 0.146.0')
+                  changes += 1
+              elif before_version != after_version:
+                  raise SystemExit(f'unexpected local version change: {name}')
 
-          if not changed_local:
-              raise SystemExit('lock refresh made no local version changes')
-          print(f'audited {len(changed_local)} workspace package version updates')
-          for name, before, after in changed_local:
-              print(f'{name}: {before} -> {after}')
+          if changes == 0:
+              raise SystemExit('no audited workspace version changes')
+          print(f'audited {changes} minimal workspace lock updates')
           PY
+          rustup toolchain install 1.95.0 --profile minimal
+          cd codex-rs
+          rustup run 1.95.0 cargo metadata --locked --format-version 1 >/dev/null
+          cd ..
           git diff --check
           git diff --stat -- codex-rs/Cargo.lock
 
