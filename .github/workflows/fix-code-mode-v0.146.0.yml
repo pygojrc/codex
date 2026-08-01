@@ -51,6 +51,7 @@ jobs:
             codex-rs/code-mode/src/remote_session/connection.rs
           git add -u FIX_CODE_MODE_01460.md || true
           test "$(git diff --cached --name-only | sort)" = "$(printf '%s\n' \
+            FIX_CODE_MODE_01460.md \
             codex-rs/code-mode/src/remote_session.rs \
             codex-rs/code-mode/src/remote_session/connection.rs | sort)"
           git diff --cached --check
