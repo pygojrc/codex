@@ -1,0 +1,75 @@
+name: Diagnose Codex 0.146.0 Termux sync
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diagnose-codex-0.146.0-termux-sync
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: >-
+      github.repository == 'pygojrc/codex' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'sync-termux-v0.146.0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TARGET_BRANCH: sync-termux-v0.146.0
+      UPSTREAM_BRANCH: upstream-rust-v0.146.0
+      UPSTREAM_COMMIT: e363b08c9175ac1cbe5893615dd2cb9ddf95043b
+      DIAGNOSTIC_FILE: .sync-conflicts-v0.146.0.txt
+    steps:
+      - name: Checkout synchronization branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: sync-termux-v0.146.0
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Diagnose fixed upstream merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          if [[ -f "${DIAGNOSTIC_FILE}" ]]; then
+            echo 'Diagnostic file already exists; no repeated merge attempt.'
+            exit 0
+          fi
+
+          git fetch origin "${UPSTREAM_BRANCH}:refs/remotes/origin/${UPSTREAM_BRANCH}"
+          test "$(git rev-parse "origin/${UPSTREAM_BRANCH}")" = "${UPSTREAM_COMMIT}"
+
+          set +e
+          git merge --no-commit --no-ff "${UPSTREAM_COMMIT}"
+          merge_status=$?
+          set -e
+
+          if [[ "${merge_status}" -eq 0 ]]; then
+            git commit -m 'chore(release): merge OpenAI Codex 0.146.0 source'
+            git push origin "HEAD:${TARGET_BRANCH}"
+            exit 0
+          fi
+
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          {
+            printf 'upstream_commit=%s\n' "${UPSTREAM_COMMIT}"
+            printf 'merge_head=%s\n' "$(git rev-parse HEAD)"
+            printf 'conflicts:\n%s\n' "${conflicts}"
+            printf '\nstatus:\n'
+            git status --short
+          } > "${RUNNER_TEMP}/sync-diagnostic.txt"
+
+          git merge --abort
+          cp "${RUNNER_TEMP}/sync-diagnostic.txt" "${DIAGNOSTIC_FILE}"
+          git add "${DIAGNOSTIC_FILE}"
+          git commit -m 'ci: record Codex 0.146.0 merge conflicts'
+          git push origin "HEAD:${TARGET_BRANCH}"
