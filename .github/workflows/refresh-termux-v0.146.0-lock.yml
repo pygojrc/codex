@@ -40,11 +40,13 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import copy
+          import os
           import re
           import tomllib
           from pathlib import Path
 
-          old = tomllib.loads(Path('${RUNNER_TEMP}/Cargo.lock.before').read_text())
+          old_path = Path(os.environ['RUNNER_TEMP']) / 'Cargo.lock.before'
+          old = tomllib.loads(old_path.read_text())
           new = tomllib.loads(Path('codex-rs/Cargo.lock').read_text())
 
           def key(pkg):
