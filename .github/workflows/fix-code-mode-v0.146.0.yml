@@ -1,0 +1,73 @@
+name: Fix Codex 0.146.0 Code Mode merge
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-codex-0.146.0-code-mode
+  cancel-in-progress: true
+
+jobs:
+  fix-and-validate:
+    if: >-
+      github.repository == 'pygojrc/codex' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'fix-code-mode-01460'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      FIX_BRANCH: fix-code-mode-01460
+      UPSTREAM_BRANCH: upstream-rust-v0.146.0
+      UPSTREAM_COMMIT: e363b08c9175ac1cbe5893615dd2cb9ddf95043b
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: fix-code-mode-01460
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Restore coherent upstream Code Mode transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin "${UPSTREAM_BRANCH}:refs/remotes/origin/${UPSTREAM_BRANCH}"
+          test "$(git rev-parse "origin/${UPSTREAM_BRANCH}")" = "${UPSTREAM_COMMIT}"
+
+          git checkout "${UPSTREAM_COMMIT}" -- \
+            codex-rs/code-mode/src/remote_session.rs \
+            codex-rs/code-mode/src/remote_session/connection.rs
+
+          rm -f FIX_CODE_MODE_01460.md
+          git add \
+            codex-rs/code-mode/src/remote_session.rs \
+            codex-rs/code-mode/src/remote_session/connection.rs
+          git add -u FIX_CODE_MODE_01460.md || true
+          test "$(git diff --cached --name-only | sort)" = "$(printf '%s\n' \
+            codex-rs/code-mode/src/remote_session.rs \
+            codex-rs/code-mode/src/remote_session/connection.rs | sort)"
+          git diff --cached --check
+
+      - name: Validate Code Mode and dependent Core
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cd codex-rs
+          rustup run 1.95.0 cargo fmt --all -- --check
+          rustup run 1.95.0 cargo check --locked -p codex-code-mode
+          rustup run 1.95.0 cargo check --locked -p codex-core
+
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m 'fix(code-mode): restore Codex 0.146.0 WebSocket transport'
+          git push origin "HEAD:${FIX_BRANCH}"
