@@ -1,4 +1,4 @@
-name: Fix Codex 0.146.0 Code Mode merge
+name: Fix Codex 0.146.0 Core merge
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: fix-codex-0.146.0-code-mode
+  group: fix-codex-0.146.0-core-merge
   cancel-in-progress: true
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.head_ref == 'fix-code-mode-01460'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       FIX_BRANCH: fix-code-mode-01460
       UPSTREAM_BRANCH: upstream-rust-v0.146.0
@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Restore coherent upstream Code Mode transport
+      - name: Restore coherent upstream Core integration
         shell: bash
         run: |
           set -euo pipefail
@@ -41,22 +41,29 @@ jobs:
           git fetch origin "${UPSTREAM_BRANCH}:refs/remotes/origin/${UPSTREAM_BRANCH}"
           test "$(git rev-parse "origin/${UPSTREAM_BRANCH}")" = "${UPSTREAM_COMMIT}"
 
-          git checkout "${UPSTREAM_COMMIT}" -- \
-            codex-rs/code-mode/src/remote_session.rs \
+          paths=(
+            codex-rs/code-mode/src/remote_session.rs
             codex-rs/code-mode/src/remote_session/connection.rs
+            codex-rs/core/src/guardian/policy_template.md
+            codex-rs/core/src/guardian/review.rs
+            codex-rs/core/src/guardian/review_session.rs
+            codex-rs/core/src/tools/code_mode/mod.rs
+            codex-rs/core/src/tools/spec_plan.rs
+            codex-rs/core/tests/suite/code_mode.rs
+            codex-rs/core/tests/suite/guardian_review.rs
+          )
+          git checkout "${UPSTREAM_COMMIT}" -- "${paths[@]}"
 
           rm -f FIX_CODE_MODE_01460.md
-          git add \
-            codex-rs/code-mode/src/remote_session.rs \
-            codex-rs/code-mode/src/remote_session/connection.rs
+          git add "${paths[@]}"
           git add -u FIX_CODE_MODE_01460.md || true
-          test "$(git diff --cached --name-only | sort)" = "$(printf '%s\n' \
-            FIX_CODE_MODE_01460.md \
-            codex-rs/code-mode/src/remote_session.rs \
-            codex-rs/code-mode/src/remote_session/connection.rs | sort)"
+
+          expected="$(printf '%s\n' FIX_CODE_MODE_01460.md "${paths[@]}" | sort)"
+          actual="$(git diff --cached --name-only | sort)"
+          test "${actual}" = "${expected}"
           git diff --cached --check
 
-      - name: Validate Code Mode and dependent Core
+      - name: Validate Code Mode, Core and CLI
         shell: bash
         run: |
           set -euo pipefail
@@ -65,10 +72,11 @@ jobs:
           rustup run 1.95.0 cargo fmt --all -- --check
           rustup run 1.95.0 cargo check --locked -p codex-code-mode
           rustup run 1.95.0 cargo check --locked -p codex-core
+          rustup run 1.95.0 cargo check --locked -p codex-cli
 
       - name: Commit validated fix
         shell: bash
         run: |
           set -euo pipefail
-          git commit -m 'fix(code-mode): restore Codex 0.146.0 WebSocket transport'
+          git commit -m 'fix(core): restore coherent Codex 0.146.0 integration'
           git push origin "HEAD:${FIX_BRANCH}"
