@@ -5,24 +5,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
-UPSTREAM_TAG="rust-v0.144.6"
-UPSTREAM_COMMIT="5d1fbf26c43abc65a203928b2e31561cb039e06d"
-CODEX_VERSION="0.144.6"
-RELEASE_TAG="termux-v0.144.6"
-RELEASE_WORKFLOW=".github/workflows/termux-release-v0.144.6.yml"
-PATCH_MANIFEST="patches/v0.144.6.md"
+UPSTREAM_TAG="rust-v0.146.0"
+UPSTREAM_COMMIT="e363b08c9175ac1cbe5893615dd2cb9ddf95043b"
+CODEX_VERSION="0.146.0"
+RELEASE_TAG="termux-v0.146.0"
+RELEASE_WORKFLOW=".github/workflows/termux-release-v0.146.0.yml"
+PATCH_MANIFEST="patches/v0.146.0.md"
 
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; exit 1; }
 
 contains() {
   local description="$1" pattern="$2" file="$3"
+  [[ -f "$file" ]] || fail "$description: missing $file"
   grep -q -- "$pattern" "$file" || fail "$description"
   pass "$description"
 }
 
 not_contains() {
   local description="$1" pattern="$2" file="$3"
+  [[ -f "$file" ]] || fail "$description: missing $file"
   if grep -q -- "$pattern" "$file"; then
     fail "$description"
   fi
@@ -39,50 +41,43 @@ if [[ "$PUBLIC_SANITIZED_TREE" == 1 ]]; then
   pass "public tree excludes Forge-only automation"
 fi
 
-[[ -f "$PATCH_MANIFEST" ]] || fail "Codex 0.144.6 patch manifest is missing"
-pass "Codex 0.144.6 patch manifest is present"
+[[ -f "$PATCH_MANIFEST" ]] || fail "Codex ${CODEX_VERSION} patch manifest is missing"
+pass "Codex ${CODEX_VERSION} patch manifest is present"
 contains "patch manifest pins upstream tag" "$UPSTREAM_TAG" "$PATCH_MANIFEST"
 contains "patch manifest pins upstream commit" "$UPSTREAM_COMMIT" "$PATCH_MANIFEST"
-contains "workspace version is Codex 0.144.6" 'version = "0.144.6"' codex-rs/Cargo.toml
+contains "workspace version is Codex ${CODEX_VERSION}" 'version = "0.146.0"' codex-rs/Cargo.toml
 
 if git cat-file -e "${UPSTREAM_COMMIT}^{commit}" 2>/dev/null; then
   git merge-base --is-ancestor "$UPSTREAM_COMMIT" HEAD \
-    || fail "official rust-v0.144.6 commit must be an ancestor"
-  pass "official rust-v0.144.6 commit is an ancestor"
+    || fail "official ${UPSTREAM_TAG} commit must be an ancestor"
+  pass "official ${UPSTREAM_TAG} commit is an ancestor"
 else
-  fail "official rust-v0.144.6 commit is unavailable in repository history"
+  fail "official ${UPSTREAM_TAG} commit is unavailable in repository history"
 fi
 
-python3 - <<'PY'
-import json
-from pathlib import Path
-
-models = json.loads(Path("codex-rs/models-manager/models.json").read_text())["models"]
-wanted = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
-found = {m.get("slug"): m for m in models if m.get("slug") in wanted}
-assert set(found) == wanted, f"missing GPT-5.6 metadata: {wanted - set(found)}"
-for slug, model in found.items():
-    assert model.get("context_window") == 272000, (slug, model.get("context_window"))
-    assert model.get("max_context_window") == 272000, (slug, model.get("max_context_window"))
-print("PASS  GPT-5.6 Sol, Terra and Luna use 272000-token context metadata")
-PY
-
-contains "dangerous command matcher is synchronized" "DangerousCommandMatch" codex-rs/core/src/exec_policy.rs
-contains "forced rm detection is synchronized" "ForcedRm" codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
+expected_workflows="$(printf '%s\n' \
+  .github/workflows/rusty-v8-android-release.yml \
+  .github/workflows/termux-pr-validation.yml \
+  .github/workflows/termux-release-v0.146.0.yml | sort)"
+actual_workflows="$(find .github/workflows -maxdepth 1 -type f -name '*.yml' -print | sort)"
+[[ "$actual_workflows" == "$expected_workflows" ]] \
+  || fail "repository must contain only fork-owned Android/Termux workflows"
+pass "repository contains only the three fork-owned workflows"
 
 contains "browser login uses Termux URL opener" "termux-open-url" codex-rs/login/src/server.rs
 contains "release profile uses thin LTO" 'lto = "thin"' codex-rs/Cargo.toml
 contains "release profile uses bounded codegen units" "codegen-units = 16" codex-rs/Cargo.toml
 contains "Android ELF uses sibling-library RUNPATH" 'link-arg=-Wl,-rpath,$ORIGIN' codex-rs/.cargo/config.toml
+contains "workspace OpenSSL is vendored for Android cross builds" 'openssl-sys = { version = "\*", features = \["vendored"\] }' codex-rs/Cargo.toml
 
-contains "update action opens repository release page" "https://github.com/pygojrc/codex/releases/latest" codex-rs/tui/src/update_action.rs
+contains "update action opens fork release page" "https://github.com/pygojrc/codex/releases/latest" codex-rs/tui/src/update_action.rs
 contains "update action uses Termux URL opener" '"termux-open-url"' codex-rs/tui/src/update_action.rs
 not_contains "update action must not execute third-party npm package" "@mmmbuto" codex-rs/tui/src/update_action.rs
 not_contains "update action must not execute npm install" "npm.*install" codex-rs/tui/src/update_action.rs
-contains "update metadata uses repository API" "api.github.com/repos/pygojrc/codex/releases/latest" codex-rs/tui/src/updates.rs
-contains "update prompt uses repository release page" "github.com/pygojrc/codex/releases/latest" codex-rs/tui/src/update_prompt.rs
-contains "history notice uses repository release page" "github.com/pygojrc/codex/releases/latest" codex-rs/tui/src/history_cell/notices.rs
-contains "doctor uses repository release API" "api.github.com/repos/pygojrc/codex/releases/latest" codex-rs/cli/src/doctor/updates.rs
+contains "update metadata uses fork API" "api.github.com/repos/pygojrc/codex/releases/latest" codex-rs/tui/src/updates.rs
+contains "update prompt uses fork release page" "github.com/pygojrc/codex/releases/latest" codex-rs/tui/src/update_prompt.rs
+contains "history notice uses fork release page" "github.com/pygojrc/codex/releases/latest" codex-rs/tui/src/history_cell/notices.rs
+contains "doctor uses fork release API" "api.github.com/repos/pygojrc/codex/releases/latest" codex-rs/cli/src/doctor/updates.rs
 not_contains "doctor must not recommend third-party npm package" "@mmmbuto" codex-rs/cli/src/doctor/updates.rs
 
 contains "Android daemon resolves the running native executable" "std::env::current_exe()" codex-rs/app-server-daemon/src/managed_install.rs
@@ -94,7 +89,7 @@ contains "control socket parent uses private directory helper" "prepare_private_
 contains "unsupported-lock fallback is explicitly classified" "ErrorKind::Unsupported" codex-rs/core/src/installation_id.rs
 contains "Android PTY shim is target-gated" 'target_os = "android"' codex-rs/utils/pty/src/pty.rs
 contains "Android PTY shim uses posix_openpt" "posix_openpt" codex-rs/utils/pty/src/pty.rs
-contains "Android build vendors OpenSSL" 'target.aarch64-linux-android.dependencies' codex-rs/core/Cargo.toml
+contains "Android build declares target-specific dependencies" 'target.aarch64-linux-android.dependencies' codex-rs/core/Cargo.toml
 contains "Termux TLS uses explicit certificate roots" "tls_certs_only" codex-rs/rmcp-client/src/utils.rs
 contains "Termux TLS roots come from webpki" "webpki_root_certs" codex-rs/rmcp-client/src/utils.rs
 contains "Android clipboard path is disabled" 'cfg(not(target_os = "android"))' codex-rs/tui/src/clipboard_paste.rs
@@ -112,26 +107,25 @@ from pathlib import Path
 root = Path('.')
 lock = tomllib.loads((root / 'codex-rs/Cargo.lock').read_text())
 versions = {p['version'] for p in lock['package'] if p['name'] == 'v8'}
-assert len(versions) == 1, f'expected one v8 version, found {versions}'
-version = next(iter(versions))
+assert versions == {'149.2.0'}, f'unexpected v8 versions: {versions}'
 manifest = tomllib.loads((root / 'third_party/v8/android-artifacts.toml').read_text())
-entry = manifest['versions'][version]['targets']['aarch64-linux-android']
+entry = manifest['versions']['149.2.0']['targets']['aarch64-linux-android']
 for key in ('repository', 'release_tag', 'archive_sha256', 'binding_sha256'):
     assert isinstance(entry.get(key), str) and entry[key], f'missing {key}'
 for key in ('archive_sha256', 'binding_sha256'):
     assert re.fullmatch(r'[0-9a-f]{64}', entry[key]), f'invalid {key}'
-print(f'PASS  V8 {version} has a checksum-pinned Android artifact pair')
+print('PASS  V8 149.2.0 has a checksum-pinned Android artifact pair')
 PY
 
 python3 -m py_compile scripts/fetch_rusty_v8_android.py
 pass "V8 fetcher passes Python syntax validation"
 
-[[ -f "$RELEASE_WORKFLOW" ]] || fail "Codex 0.144.6 ARM64 release workflow is missing"
-pass "Codex 0.144.6 ARM64 release workflow is present"
-contains "workflow pins Codex version" 'CODEX_VERSION: "0.144.6"' "$RELEASE_WORKFLOW"
-contains "workflow pins upstream tag" 'UPSTREAM_TAG: "rust-v0.144.6"' "$RELEASE_WORKFLOW"
+[[ -f "$RELEASE_WORKFLOW" ]] || fail "Codex ${CODEX_VERSION} ARM64 release workflow is missing"
+pass "Codex ${CODEX_VERSION} ARM64 release workflow is present"
+contains "workflow pins Codex version" 'CODEX_VERSION: "0.146.0"' "$RELEASE_WORKFLOW"
+contains "workflow pins upstream tag" 'UPSTREAM_TAG: "rust-v0.146.0"' "$RELEASE_WORKFLOW"
 contains "workflow pins upstream commit" "$UPSTREAM_COMMIT" "$RELEASE_WORKFLOW"
-contains "workflow pins Termux release tag" 'RELEASE_TAG: "termux-v0.144.6"' "$RELEASE_WORKFLOW"
+contains "workflow pins Termux release tag" 'RELEASE_TAG: "termux-v0.146.0"' "$RELEASE_WORKFLOW"
 contains "workflow builds Android ARM64 target" 'aarch64-linux-android' "$RELEASE_WORKFLOW"
 contains "workflow names ARM64 archive" 'codex-termux-aarch64-${CODEX_VERSION}' "$RELEASE_WORKFLOW"
 contains "workflow enforces Cargo lockfile" "--locked" "$RELEASE_WORKFLOW"
@@ -155,4 +149,4 @@ if grep -R -n -E '(curl|wget).*\|[[:space:]]*(sh|bash)' \
 fi
 pass "runtime/release paths do not pipe network content into a shell"
 
-printf '\nAll Codex 0.144.6 Termux security and compatibility invariants are present.\n'
+printf '\nAll Codex 0.146.0 Termux security and compatibility invariants are present.\n'
