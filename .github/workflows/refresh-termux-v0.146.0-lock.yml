@@ -1,0 +1,110 @@
+name: Refresh Termux 0.146.0 Cargo lock
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    if: >-
+      github.repository == 'pygojrc/codex' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'refresh-termux-01460-lock'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout lock refresh branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: refresh-termux-01460-lock
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Refresh lock file
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal
+          cp codex-rs/Cargo.lock "${RUNNER_TEMP}/Cargo.lock.before"
+          cd codex-rs
+          rustup run 1.95.0 cargo generate-lockfile
+          rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+
+      - name: Audit lock-file delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import copy
+          import re
+          import tomllib
+          from pathlib import Path
+
+          old = tomllib.loads(Path('${RUNNER_TEMP}/Cargo.lock.before').read_text())
+          new = tomllib.loads(Path('codex-rs/Cargo.lock').read_text())
+
+          def key(pkg):
+              return (pkg['name'], pkg.get('source'))
+
+          old_pkgs = {key(p): p for p in old['package']}
+          new_pkgs = {key(p): p for p in new['package']}
+          if old_pkgs.keys() != new_pkgs.keys():
+              added = sorted(new_pkgs.keys() - old_pkgs.keys())
+              removed = sorted(old_pkgs.keys() - new_pkgs.keys())
+              raise SystemExit(f'package set changed; added={added}, removed={removed}')
+
+          local_names = {name for (name, source) in old_pkgs if source is None}
+          suffix = re.compile(r'^(.*) (?:0\.0\.0|0\.144\.6|0\.146\.0)$')
+
+          def normalize_dep(dep):
+              m = suffix.match(dep)
+              if m and m.group(1) in local_names:
+                  return m.group(1)
+              return dep
+
+          changed_local = []
+          for pkg_key, before in old_pkgs.items():
+              after = new_pkgs[pkg_key]
+              name, source = pkg_key
+              if source is not None:
+                  if before != after:
+                      raise SystemExit(f'external package changed: {name} {source}')
+                  continue
+
+              b = copy.deepcopy(before)
+              a = copy.deepcopy(after)
+              before_version = b.pop('version')
+              after_version = a.pop('version')
+              b_deps = sorted(normalize_dep(x) for x in b.pop('dependencies', []))
+              a_deps = sorted(normalize_dep(x) for x in a.pop('dependencies', []))
+              if b != a or b_deps != a_deps:
+                  raise SystemExit(f'local package structure changed: {name}')
+              if after_version != '0.146.0':
+                  raise SystemExit(f'local package {name} has unexpected version {after_version}')
+              if before_version != after_version:
+                  changed_local.append((name, before_version, after_version))
+
+          if not changed_local:
+              raise SystemExit('lock refresh made no local version changes')
+          print(f'audited {len(changed_local)} workspace package version updates')
+          for name, before, after in changed_local:
+              print(f'{name}: {before} -> {after}')
+          PY
+          git diff --check
+          git diff --stat -- codex-rs/Cargo.lock
+
+      - name: Commit audited lock file
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f REFRESH_TERMUX_01460_LOCK.md
+          git add codex-rs/Cargo.lock
+          git add -u REFRESH_TERMUX_01460_LOCK.md || true
+          git commit -m 'chore(release): refresh Cargo.lock for Codex 0.146.0'
+          git push origin HEAD:refresh-termux-01460-lock
