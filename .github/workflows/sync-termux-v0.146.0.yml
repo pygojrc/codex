@@ -1,4 +1,4 @@
-name: Diagnose Codex 0.146.0 Termux sync
+name: Resolve Codex 0.146.0 Termux sync
 
 on:
   pull_request:
@@ -9,22 +9,21 @@ permissions:
   contents: write
 
 concurrency:
-  group: diagnose-codex-0.146.0-termux-sync
+  group: resolve-codex-0.146.0-termux-sync
   cancel-in-progress: true
 
 jobs:
-  diagnose:
+  resolve:
     if: >-
       github.repository == 'pygojrc/codex' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.head_ref == 'sync-termux-v0.146.0'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       TARGET_BRANCH: sync-termux-v0.146.0
       UPSTREAM_BRANCH: upstream-rust-v0.146.0
       UPSTREAM_COMMIT: e363b08c9175ac1cbe5893615dd2cb9ddf95043b
-      DIAGNOSTIC_FILE: .sync-conflicts-v0.146.0.txt
     steps:
       - name: Checkout synchronization branch
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -33,43 +32,163 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Diagnose fixed upstream merge
+      - name: Merge fixed upstream release with audited resolutions
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-          if [[ -f "${DIAGNOSTIC_FILE}" ]]; then
-            echo 'Diagnostic file already exists; no repeated merge attempt.'
-            exit 0
-          fi
-
           git fetch origin "${UPSTREAM_BRANCH}:refs/remotes/origin/${UPSTREAM_BRANCH}"
           test "$(git rev-parse "origin/${UPSTREAM_BRANCH}")" = "${UPSTREAM_COMMIT}"
+
+          if git merge-base --is-ancestor "${UPSTREAM_COMMIT}" HEAD; then
+            echo 'Official 0.146.0 release is already merged.'
+            exit 0
+          fi
 
           set +e
           git merge --no-commit --no-ff "${UPSTREAM_COMMIT}"
           merge_status=$?
           set -e
 
-          if [[ "${merge_status}" -eq 0 ]]; then
-            git commit -m 'chore(release): merge OpenAI Codex 0.146.0 source'
-            git push origin "HEAD:${TARGET_BRANCH}"
-            exit 0
+          if [[ "${merge_status}" -ne 0 ]]; then
+            # Workflows removed from this fork stay removed.
+            git rm -f --ignore-unmatch \
+              .github/workflows/python-runtime-build.yml \
+              .github/workflows/python-runtime-release.yml \
+              .github/workflows/rust-release.yml
+
+            # Preserve fork-owned Termux documentation, installers, code-mode and Guardian behavior.
+            for path in \
+              README.md \
+              codex-rs/code-mode/src/remote_session.rs \
+              codex-rs/code-mode/src/remote_session/connection.rs \
+              codex-rs/code-mode/src/remote_session_tests.rs \
+              codex-rs/core/src/guardian/policy_template.md \
+              codex-rs/core/src/guardian/review.rs \
+              codex-rs/core/src/guardian/review_session.rs \
+              codex-rs/core/src/tools/code_mode/mod.rs \
+              codex-rs/core/src/tools/spec_plan.rs \
+              codex-rs/core/tests/suite/code_mode.rs \
+              codex-rs/core/tests/suite/guardian_review.rs \
+              scripts/install/install.ps1 \
+              scripts/install/install.sh \
+              scripts/install/test_install_sh.py; do
+              git checkout --ours -- "$path"
+              git add -- "$path"
+            done
+
+            # Adopt upstream implementations and generated metadata elsewhere.
+            for path in \
+              codex-rs/Cargo.lock \
+              codex-rs/Cargo.toml \
+              codex-rs/app-server-daemon/src/update_loop.rs \
+              codex-rs/app-server/tests/suite/v2/thread_resume.rs \
+              codex-rs/core/tests/suite/exec_policy.rs \
+              codex-rs/core/tests/suite/permissions_messages.rs \
+              codex-rs/core/tests/suite/personality.rs \
+              codex-rs/models-manager/models.json \
+              codex-rs/models-manager/src/model_info.rs \
+              codex-rs/models-manager/src/model_info_tests.rs \
+              codex-rs/protocol/src/openai_models.rs \
+              codex-rs/tui/src/app/config_persistence.rs \
+              codex-rs/tui/src/app/tests/advanced_reasoning_tests.rs \
+              codex-rs/tui/src/app_server_session.rs \
+              codex-rs/tui/src/chatwidget/tests/history_replay.rs \
+              codex-rs/tui/src/chatwidget/tests/popups_and_settings.rs; do
+              git checkout --theirs -- "$path"
+              git add -- "$path"
+            done
           fi
 
-          conflicts="$(git diff --name-only --diff-filter=U)"
-          {
-            printf 'upstream_commit=%s\n' "${UPSTREAM_COMMIT}"
-            printf 'merge_head=%s\n' "$(git rev-parse HEAD)"
-            printf 'conflicts:\n%s\n' "${conflicts}"
-            printf '\nstatus:\n'
-            git status --short
-          } > "${RUNNER_TEMP}/sync-diagnostic.txt"
+          test -z "$(git diff --name-only --diff-filter=U)"
 
-          git merge --abort
-          cp "${RUNNER_TEMP}/sync-diagnostic.txt" "${DIAGNOSTIC_FILE}"
-          git add "${DIAGNOSTIC_FILE}"
-          git commit -m 'ci: record Codex 0.146.0 merge conflicts'
+          # Keep only fork-owned workflows. Upstream release/CI workflows are intentionally excluded.
+          find .github/workflows -maxdepth 1 -type f -name '*.yml' -print0 | while IFS= read -r -d '' workflow; do
+            case "$workflow" in
+              .github/workflows/rusty-v8-android-release.yml|\
+              .github/workflows/termux-pr-validation.yml|\
+              .github/workflows/termux-release-v0.144.6.yml)
+                ;;
+              *) git rm -f --ignore-unmatch "$workflow" ;;
+            esac
+          done
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path('codex-rs/Cargo.toml')
+          text = path.read_text()
+          text, count = re.subn(
+              r'(\[workspace\.package\]\nversion = )"[^"]+"',
+              r'\1"0.146.0"',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('workspace version not found')
+
+          text = re.sub(
+              r'^openssl-sys\s*=.*$',
+              'openssl-sys = { version = "*", features = ["vendored"] }',
+              text,
+              count=1,
+              flags=re.M,
+          )
+
+          match = re.search(r'(?ms)^\[profile\.release\]\n(.*?)(?=^\[|\Z)', text)
+          if not match:
+              raise SystemExit('profile.release not found')
+          block = match.group(0)
+          for key, value in [('lto', '"thin"'), ('codegen-units', '16'), ('strip', '"symbols"')]:
+              if re.search(rf'(?m)^{re.escape(key)}\s*=', block):
+                  block = re.sub(rf'(?m)^{re.escape(key)}\s*=.*$', f'{key} = {value}', block)
+              else:
+                  block += f'{key} = {value}\n'
+          text = text[:match.start()] + block + text[match.end():]
+          path.write_text(text)
+
+          readme = Path('README.md')
+          value = readme.read_text().replace('0.144.6', '0.146.0').replace('rust-v0.144.6', 'rust-v0.146.0')
+          readme.write_text(value)
+
+          package = Path('npm-package/package.json')
+          if package.exists():
+              value = package.read_text().replace('"version": "0.144.6"', '"version": "0.146.0"').replace('rust-v0.144.6', 'rust-v0.146.0')
+              package.write_text(value)
+          PY
+
+          rm -f SYNC_TERMUX_0.146.0.md .sync-conflicts-v0.146.0.txt
+          git add -A
+          git diff --check
+
+      - name: Validate locked metadata and record V8 version
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cd codex-rs
+          rustup run 1.95.0 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+          rustup run 1.95.0 cargo fmt --all -- --check
+          v8_version="$(python3 - <<'PY'
+          import tomllib
+          from pathlib import Path
+          lock = tomllib.loads(Path('Cargo.lock').read_text())
+          versions = {p['version'] for p in lock['package'] if p['name'] == 'v8'}
+          if len(versions) != 1:
+              raise SystemExit(f'unexpected v8 versions: {versions}')
+          print(next(iter(versions)))
+          PY
+          )"
+          cd ..
+          printf '%s\n' "$v8_version" > .sync-v8-v0.146.0.txt
+          git add .sync-v8-v0.146.0.txt
+
+      - name: Commit synchronized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m 'chore(release): sync OpenAI Codex 0.146.0'
+          git merge-base --is-ancestor "${UPSTREAM_COMMIT}" HEAD
           git push origin "HEAD:${TARGET_BRANCH}"
