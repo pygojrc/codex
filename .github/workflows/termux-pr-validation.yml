@@ -4,12 +4,12 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - ".github/workflows/termux-release-v0.144.6.yml"
+      - ".github/workflows/termux-release-v0.146.0.yml"
       - "codex-rs/**"
       - "scripts/fetch_rusty_v8_android.py"
       - "third_party/v8/**"
       - "verify-patches.sh"
-      - "patches/v0.144.6.md"
+      - "patches/v0.146.0.md"
   workflow_dispatch: {}
 
 permissions:
@@ -18,11 +18,12 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Install validation dependencies
@@ -42,13 +43,13 @@ jobs:
           from pathlib import Path
           import yaml
 
-          path = Path('.github/workflows/termux-release-v0.144.6.yml')
+          path = Path('.github/workflows/termux-release-v0.146.0.yml')
           parsed = yaml.safe_load(path.read_text())
           if not isinstance(parsed, dict):
               raise SystemExit(f'{path} did not parse as a YAML mapping')
           print(f'validated YAML: {path}')
 
-          patch_manifest = Path('patches/v0.144.6.md')
+          patch_manifest = Path('patches/v0.146.0.md')
           if not patch_manifest.is_file():
               raise SystemExit(f'missing {patch_manifest}')
           print(f'validated patch manifest: {patch_manifest}')
@@ -68,7 +69,7 @@ jobs:
 
       - name: Upload validation diagnostics
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: termux-validation-${{ github.run_id }}
           path: termux-validation.log
