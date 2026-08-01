@@ -68,6 +68,10 @@ jobs:
               return dep
 
           changes = 0
+          allowed_local_dependency_delta = {
+              'codex-rmcp-client': ({'webpki-root-certs'}, set()),
+          }
+
           for pkg_key, before in old_pkgs.items():
               after = new_pkgs[pkg_key]
               name, source = pkg_key
@@ -80,10 +84,21 @@ jobs:
               a = copy.deepcopy(after)
               before_version = b.pop('version')
               after_version = a.pop('version')
-              b_deps = sorted(normalize_dep(x) for x in b.pop('dependencies', []))
-              a_deps = sorted(normalize_dep(x) for x in a.pop('dependencies', []))
-              if b != a or b_deps != a_deps:
-                  raise SystemExit(f'local package structure changed: {name}')
+              b_deps = {normalize_dep(x) for x in b.pop('dependencies', [])}
+              a_deps = {normalize_dep(x) for x in a.pop('dependencies', [])}
+
+              if b != a:
+                  raise SystemExit(f'local package metadata changed: {name}')
+
+              added_deps = a_deps - b_deps
+              removed_deps = b_deps - a_deps
+              allowed_added, allowed_removed = allowed_local_dependency_delta.get(name, (set(), set()))
+              if added_deps != allowed_added or removed_deps != allowed_removed:
+                  raise SystemExit(
+                      f'local dependency structure changed: {name}; '
+                      f'added={sorted(added_deps)}, removed={sorted(removed_deps)}'
+                  )
+
               if before_version in {'0.0.0', '0.144.6'}:
                   if after_version != '0.146.0':
                       raise SystemExit(f'local package {name} was not updated to 0.146.0')
@@ -94,6 +109,7 @@ jobs:
           if changes == 0:
               raise SystemExit('no audited workspace version changes')
           print(f'audited {changes} workspace-only lock updates')
+          print('audited codex-rmcp-client dependency addition: webpki-root-certs')
           PY
           git diff --check
           git diff --stat -- codex-rs/Cargo.lock
