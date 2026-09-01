@@ -18,15 +18,9 @@ pub(crate) fn create_env_for_mcp_server(
     env_vars: &[McpServerEnvVar],
 ) -> Result<HashMap<OsString, OsString>> {
     let additional_env_vars = local_stdio_env_var_names(env_vars)?;
-    let termux_env_vars: &[&str] = if running_on_termux() {
-        TERMUX_ENV_VARS
-    } else {
-        &[]
-    };
     let mut env: HashMap<OsString, OsString> = DEFAULT_ENV_VARS
         .iter()
         .copied()
-        .chain(termux_env_vars.iter().copied())
         .chain(additional_env_vars)
         .filter_map(|var| env::var_os(var).map(|value| (OsString::from(var), value)))
         .collect();
@@ -62,10 +56,6 @@ pub(crate) fn create_env_for_mcp_server(
             .is_none_or(|name| !is_non_inheritable_env_var(name))
     });
     Ok(env)
-}
-
-fn running_on_termux() -> bool {
-    env::var_os("TERMUX_VERSION").is_some()
 }
 
 pub(crate) fn create_env_overlay_for_remote_mcp_server(
@@ -183,28 +173,6 @@ pub(crate) const DEFAULT_ENV_VARS: &[&str] = &[
     "TMPDIR",
     "TZ",
 ];
-
-#[cfg(unix)]
-pub(crate) const TERMUX_ENV_VARS: &[&str] = &[
-    "PREFIX",
-    "TERMUX_VERSION",
-    "TERMUX_APP_PID",
-    "TERMUX_MAIN_PACKAGE_FORMAT",
-    "LD_PRELOAD",
-    "LD_LIBRARY_PATH",
-    "NPM_CONFIG_PREFIX",
-    "ANDROID_DATA",
-    "ANDROID_ROOT",
-    "ANDROID_RUNTIME_ROOT",
-    "BOOTCLASSPATH",
-    "XDG_RUNTIME_DIR",
-    "XDG_DATA_HOME",
-    "XDG_CACHE_HOME",
-    "XDG_CONFIG_HOME",
-];
-
-#[cfg(not(unix))]
-pub(crate) const TERMUX_ENV_VARS: &[&str] = &[];
 
 #[cfg(windows)]
 pub(crate) const DEFAULT_ENV_VARS: &[&str] =

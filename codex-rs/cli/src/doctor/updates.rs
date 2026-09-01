@@ -40,8 +40,7 @@ use super::npm_global_root_check;
 use super::run_command;
 
 const VERSION_FILE_NAME: &str = "version.json";
-const GITHUB_LATEST_RELEASE_URL: &str =
-    "https://api.github.com/repos/pygojrc/codex/releases/latest";
+const GITHUB_LATEST_RELEASE_URL: &str = "https://api.github.com/repos/pygojrc/codex/releases/latest";
 const HOMEBREW_CASK_API_URL: &str = "https://formulae.brew.sh/api/cask/codex.json";
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 const DESKTOP_UPDATE_URL: &str = "https://persistent.oaistatic.com/codex-app-prod/appcast-x64.xml";
@@ -458,11 +457,11 @@ fn fetch_latest_github_release_version() -> Result<String, String> {
     }
 
     let info = http_get_json::<ReleaseInfo>(GITHUB_LATEST_RELEASE_URL)?;
-    let tag_name = info.tag_name.as_str();
-    tag_name
+    let version = info
+        .tag_name
         .strip_prefix("termux-v")
-        .or_else(|| tag_name.strip_prefix("rust-v"))
-        .or_else(|| tag_name.strip_prefix('v'))
+        .or_else(|| info.tag_name.strip_prefix("rust-v"));
+    version
         .map(str::to_string)
         .ok_or_else(|| format!("failed to parse latest tag {}", info.tag_name))
 }

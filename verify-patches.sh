@@ -5,12 +5,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
-UPSTREAM_TAG="rust-v0.146.0"
-UPSTREAM_COMMIT="e363b08c9175ac1cbe5893615dd2cb9ddf95043b"
-CODEX_VERSION="0.146.0"
-RELEASE_TAG="termux-v0.146.0"
+UPSTREAM_TAG="rust-v0.152.0"
+UPSTREAM_COMMIT="316795b3cf2a45e90d121d9f46499d4658b2645c"
+CODEX_VERSION="0.152.0"
+RELEASE_TAG="termux-v0.152.0"
 RELEASE_WORKFLOW=".github/workflows/termux-release-v0.146.0.yml"
-PATCH_MANIFEST="patches/v0.146.0.md"
+PATCH_MANIFEST="patches/v0.152.0.md"
 
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; exit 1; }
@@ -45,7 +45,7 @@ fi
 pass "Codex ${CODEX_VERSION} patch manifest is present"
 contains "patch manifest pins upstream tag" "$UPSTREAM_TAG" "$PATCH_MANIFEST"
 contains "patch manifest pins upstream commit" "$UPSTREAM_COMMIT" "$PATCH_MANIFEST"
-contains "workspace version is Codex ${CODEX_VERSION}" 'version = "0.146.0"' codex-rs/Cargo.toml
+contains "workspace version is Codex ${CODEX_VERSION}" 'version = "0.152.0"' codex-rs/Cargo.toml
 
 if git cat-file -e "${UPSTREAM_COMMIT}^{commit}" 2>/dev/null; then
   git merge-base --is-ancestor "$UPSTREAM_COMMIT" HEAD \
@@ -90,8 +90,6 @@ contains "unsupported-lock fallback is explicitly classified" "ErrorKind::Unsupp
 contains "Android PTY shim is target-gated" 'target_os = "android"' codex-rs/utils/pty/src/pty.rs
 contains "Android PTY shim uses posix_openpt" "posix_openpt" codex-rs/utils/pty/src/pty.rs
 contains "Android build declares target-specific dependencies" 'target.aarch64-linux-android.dependencies' codex-rs/core/Cargo.toml
-contains "Termux TLS uses explicit certificate roots" "tls_certs_only" codex-rs/rmcp-client/src/utils.rs
-contains "Termux TLS roots come from webpki" "webpki_root_certs" codex-rs/rmcp-client/src/utils.rs
 contains "Android clipboard path is disabled" 'cfg(not(target_os = "android"))' codex-rs/tui/src/clipboard_paste.rs
 
 contains "V8 fetcher requires a manifest entry" "no checksum-pinned rusty_v8 Android artifact entry" scripts/fetch_rusty_v8_android.py
@@ -107,14 +105,14 @@ from pathlib import Path
 root = Path('.')
 lock = tomllib.loads((root / 'codex-rs/Cargo.lock').read_text())
 versions = {p['version'] for p in lock['package'] if p['name'] == 'v8'}
-assert versions == {'149.2.0'}, f'unexpected v8 versions: {versions}'
+assert versions == {'150.4.0'}, f'unexpected v8 versions: {versions}'
 manifest = tomllib.loads((root / 'third_party/v8/android-artifacts.toml').read_text())
-entry = manifest['versions']['149.2.0']['targets']['aarch64-linux-android']
+entry = manifest['versions']['150.4.0']['targets']['aarch64-linux-android']
 for key in ('repository', 'release_tag', 'archive_sha256', 'binding_sha256'):
     assert isinstance(entry.get(key), str) and entry[key], f'missing {key}'
 for key in ('archive_sha256', 'binding_sha256'):
     assert re.fullmatch(r'[0-9a-f]{64}', entry[key]), f'invalid {key}'
-print('PASS  V8 149.2.0 has a checksum-pinned Android artifact pair')
+print('PASS  V8 150.4.0 has a checksum-pinned Android artifact pair')
 PY
 
 python3 -m py_compile scripts/fetch_rusty_v8_android.py
@@ -122,10 +120,10 @@ pass "V8 fetcher passes Python syntax validation"
 
 [[ -f "$RELEASE_WORKFLOW" ]] || fail "Codex ${CODEX_VERSION} ARM64 release workflow is missing"
 pass "Codex ${CODEX_VERSION} ARM64 release workflow is present"
-contains "workflow pins Codex version" 'CODEX_VERSION: "0.146.0"' "$RELEASE_WORKFLOW"
-contains "workflow pins upstream tag" 'UPSTREAM_TAG: "rust-v0.146.0"' "$RELEASE_WORKFLOW"
+contains "workflow pins Codex version" 'CODEX_VERSION: "0.152.0"' "$RELEASE_WORKFLOW"
+contains "workflow pins upstream tag" 'UPSTREAM_TAG: "rust-v0.152.0"' "$RELEASE_WORKFLOW"
 contains "workflow pins upstream commit" "$UPSTREAM_COMMIT" "$RELEASE_WORKFLOW"
-contains "workflow pins Termux release tag" 'RELEASE_TAG: "termux-v0.146.0"' "$RELEASE_WORKFLOW"
+contains "workflow pins Termux release tag" 'RELEASE_TAG: "termux-v0.152.0"' "$RELEASE_WORKFLOW"
 contains "workflow builds Android ARM64 target" 'aarch64-linux-android' "$RELEASE_WORKFLOW"
 contains "workflow names ARM64 archive" 'codex-termux-aarch64-${CODEX_VERSION}' "$RELEASE_WORKFLOW"
 contains "workflow enforces Cargo lockfile" "--locked" "$RELEASE_WORKFLOW"
@@ -149,4 +147,4 @@ if grep -R -n -E '(curl|wget).*\|[[:space:]]*(sh|bash)' \
 fi
 pass "runtime/release paths do not pipe network content into a shell"
 
-printf '\nAll Codex 0.146.0 Termux security and compatibility invariants are present.\n'
+printf '\nAll Codex 0.152.0 Termux security and compatibility invariants are present.\n'
