@@ -68,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           df -h "$RUNNER_TEMP" / || true
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+          sudo rm -rf /usr/share/dotnet /opt/ghc \
             /opt/hostedtoolcache/CodeQL || true
           sudo apt-get clean || true
           df -h "$RUNNER_TEMP" / || true
