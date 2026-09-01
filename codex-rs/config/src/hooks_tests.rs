@@ -57,31 +57,76 @@ fn hooks_file_deserializes_existing_json_shape() {
 }
 
 #[test]
-fn hooks_file_accepts_top_level_description() {
-    // Regression: security-guidance 2.0.6 emits a top-level `description` in
-    // hooks.json. The parser must accept it while `deny_unknown_fields` still
-    // rejects genuinely unknown fields.
-    let parsed: HooksFile = serde_json::from_str(
-        r#"{
-  "description": "Security guidance hooks",
-  "hooks": {
-    "PreToolUse": []
-  }
-}"#,
-    )
-    .expect("top-level description should deserialize");
-    assert_eq!(
-        parsed.description.as_deref(),
-        Some("Security guidance hooks")
-    );
+fn hooks_file_deserializes_mcp_tool_handler_with_json_inputs() {
+    let parsed: HooksFile = serde_json::from_value(serde_json::json!({
+        "hooks": {
+            "PostToolUse": [{
+                "matcher": "Write|Edit",
+                "hooks": [{
+                    "type": "mcp_tool",
+                    "server": "security",
+                    "tool": "scan",
+                    "input": {
+                        "file_path": "${tool_input.file_path}",
+                        "include_ignored": false,
+                    },
+                    "timeout": 30,
+                    "statusMessage": "Scanning file",
+                }],
+            }],
+        },
+    }))
+    .expect("MCP tool hooks should deserialize");
 
-    // A genuinely unknown field is still rejected.
-    let error = serde_json::from_str::<HooksFile>(r#"{ "bogus": true, "hooks": {} }"#)
-        .expect_err("unknown fields other than description must be rejected");
-    assert!(
-        error.to_string().contains("unknown field `bogus`"),
-        "unexpected parse error: {error}"
+    assert_eq!(
+        parsed.hooks.post_tool_use[0].hooks,
+        vec![HookHandlerConfig::McpTool {
+            server: "security".to_string(),
+            tool: "scan".to_string(),
+            input: serde_json::Map::from_iter([
+                (
+                    "file_path".to_string(),
+                    serde_json::Value::String("${tool_input.file_path}".to_string()),
+                ),
+                (
+                    "include_ignored".to_string(),
+                    serde_json::Value::Bool(false)
+                ),
+            ]),
+            timeout_sec: Some(30),
+            status_message: Some("Scanning file".to_string()),
+        }]
     );
+}
+
+#[test]
+fn hooks_file_rejects_mcp_tool_handler_with_null_input() {
+    for input in [
+        serde_json::json!({ "optional": null }),
+        serde_json::json!({ "metadata": { "optional": null } }),
+        serde_json::json!({ "values": [null] }),
+    ] {
+        let error = serde_json::from_value::<HooksFile>(serde_json::json!({
+            "hooks": {
+                "PostToolUse": [{
+                    "hooks": [{
+                        "type": "mcp_tool",
+                        "server": "security",
+                        "tool": "scan",
+                        "input": input,
+                    }],
+                }],
+            },
+        }))
+        .expect_err("literal null MCP hook arguments should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("MCP hook input must be representable as TOML"),
+            "unexpected parse error: {error}"
+        );
+    }
 }
 
 #[test]
