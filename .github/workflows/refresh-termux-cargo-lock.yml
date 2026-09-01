@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           cd codex-rs
-          cargo metadata --format-version=1 --no-deps >/dev/null
+          cargo metadata --format-version=1 --no-deps --filter-platform aarch64-linux-android >/dev/null
           if git diff --quiet -- Cargo.lock; then
             echo "Cargo metadata did not update Cargo.lock" >&2
             exit 1
