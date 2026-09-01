@@ -1,5 +1,7 @@
 name: Build and release Codex 0.152.0 for Termux ARM64
 
+# Cargo.lock is resolved for aarch64-linux-android and enforced with --locked.
+
 "on":
   push:
     branches: [main]
