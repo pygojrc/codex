@@ -66,7 +66,7 @@ pass "repository contains only the three fork-owned workflows"
 
 contains "browser login uses Termux URL opener" "termux-open-url" codex-rs/login/src/server.rs
 contains "release profile uses thin LTO" 'lto = "thin"' codex-rs/Cargo.toml
-contains "release profile uses bounded codegen units" "codegen-units = 16" codex-rs/Cargo.toml
+contains "release profile uses bounded codegen units" "codegen-units = 4" codex-rs/Cargo.toml
 contains "Android ELF uses sibling-library RUNPATH" 'link-arg=-Wl,-rpath,$ORIGIN' codex-rs/.cargo/config.toml
 contains "workspace OpenSSL is vendored for Android cross builds" 'openssl-sys = { version = "\*", features = \["vendored"\] }' codex-rs/Cargo.toml
 
