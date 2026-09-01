@@ -1,10 +1,10 @@
 name: Build and release Codex 0.152.0 for Termux ARM64
 
-on:
+"on":
   push:
     branches: [main]
     paths:
-      - ".github/workflows/termux-release-v0.146.0.yml"
+      - ".github/workflows/termux-release-v0.152.0.yml"
       - "codex-rs/**"
       - "scripts/fetch_rusty_v8_android.py"
       - "third_party/v8/**"
@@ -269,6 +269,6 @@ jobs:
             "${PACKAGE_ARCHIVE}" \
             "${PACKAGE_CHECKSUM}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --target "${SOURCE_SHA}" \
+            --target main \
             --title "Codex ${CODEX_VERSION} for Termux ARM64" \
             --notes-file "${notes_file}"

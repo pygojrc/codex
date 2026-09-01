@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_REPOSITORY = "DioNanos/codex-termux"
+DEFAULT_REPOSITORY = "pygojrc/codex"
 DEFAULT_TARGET = "aarch64-linux-android"
 MANIFEST_PATH = ROOT / "third_party" / "v8" / "android-artifacts.toml"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")

@@ -9,7 +9,7 @@ UPSTREAM_TAG="rust-v0.152.0"
 UPSTREAM_COMMIT="316795b3cf2a45e90d121d9f46499d4658b2645c"
 CODEX_VERSION="0.152.0"
 RELEASE_TAG="termux-v0.152.0"
-RELEASE_WORKFLOW=".github/workflows/termux-release-v0.146.0.yml"
+RELEASE_WORKFLOW=".github/workflows/termux-release-v0.152.0.yml"
 PATCH_MANIFEST="patches/v0.152.0.md"
 
 pass() { printf 'PASS  %s\n' "$1"; }
@@ -58,8 +58,8 @@ fi
 expected_workflows="$(printf '%s\n' \
   .github/workflows/rusty-v8-android-release.yml \
   .github/workflows/termux-pr-validation.yml \
-  .github/workflows/termux-release-v0.146.0.yml | sort)"
-actual_workflows="$(find .github/workflows -maxdepth 1 -type f -name '*.yml' -print | sort)"
+  .github/workflows/termux-release-v0.152.0.yml | sort)"
+actual_workflows="$(git ls-files '.github/workflows/*.yml' | sort)"
 [[ "$actual_workflows" == "$expected_workflows" ]] \
   || fail "repository must contain only fork-owned Android/Termux workflows"
 pass "repository contains only the three fork-owned workflows"

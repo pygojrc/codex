@@ -16,11 +16,6 @@ name: rusty-v8-android-release
 # for an upstream android prebuild.
 
 "on":
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/rusty-v8-android-release.yml"
   workflow_dispatch:
     inputs:
       v8_version:
@@ -34,7 +29,7 @@ name: rusty-v8-android-release
           - aarch64-linux-android
         default: aarch64-linux-android
       publish_release:
-        description: "Publish a GitHub release on DioNanos/codex-termux (prerelease)"
+        description: "Publish a GitHub prerelease for the selected repository"
         type: boolean
         default: true
       release_repository:
@@ -110,7 +105,7 @@ jobs:
           echo "ANDROID_NDK_HOME=${ndk_home}" >> "${GITHUB_ENV}"
           echo "ANDROID_NDK_ROOT=${ndk_home}" >> "${GITHUB_ENV}"
 
-      - name: Prepare rusty_v8 source checkout at v${{ inputs.v8_version }}
+      - name: Prepare rusty_v8 source checkout
         id: prepare
         env:
           V8_VERSION: ${{ env.V8_VERSION }}
@@ -135,7 +130,7 @@ jobs:
           ln -sfn "${ANDROID_NDK_HOME}" "${checkout_dir}/third_party/android_toolchain/ndk"
           echo "checkout=${checkout_dir}" >> "${GITHUB_OUTPUT}"
 
-      - name: Build rusty_v8 from source for ${{ inputs.target }}
+      - name: Build rusty_v8 from source for Android ARM64
         shell: bash
         run: |
           set -euo pipefail
@@ -157,7 +152,7 @@ jobs:
           output="${GITHUB_WORKSPACE}/.artifacts/rusty-v8-android-v${{ env.V8_VERSION }}"
           archive="${output}/librusty_v8_release_${TARGET}.a"
           binding="${output}/src_binding_release_${TARGET}.rs"
-          if [ -z "${archive}" ] || [ -z "${binding}" ]; then
+          if [ ! -f "${archive}" ] || [ ! -f "${binding}" ]; then
             echo "Could not locate librusty_v8.a or src_binding.rs under ${CHECKOUT}/target/${TARGET}/release" >&2
             find "${CHECKOUT}/target/${TARGET}/release" -maxdepth 4 -type f 2>/dev/null | head -40 >&2 || true
             exit 1
@@ -193,7 +188,7 @@ jobs:
           path: dist/${{ env.TARGET }}/*
 
       - name: Publish fork-owned release
-        if: ${{ github.event_name == 'push' || inputs.publish_release }}
+        if: ${{ inputs.publish_release }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           V8_VERSION: ${{ env.V8_VERSION }}
@@ -214,7 +209,7 @@ jobs:
           \`\`\`
           $(cat "dist/${TARGET}/rusty_v8_release_${TARGET}.sha256")
           \`\`\`"
-                --target "${RELEASE_TAG}"
+                --target main
                 --prerelease
                 "dist/${TARGET}/librusty_v8_release_${TARGET}.a.gz"
                 "dist/${TARGET}/src_binding_release_${TARGET}.rs"
