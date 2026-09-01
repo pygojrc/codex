@@ -22,15 +22,17 @@ jobs:
         uses: dtolnay/rust-toolchain@e081816240890017053eacbb1bdf337761dc5582
         with:
           toolchain: "1.95.0"
+          targets: aarch64-linux-android
 
       - name: Refresh lockfile from current manifests
         shell: bash
         run: |
           set -euo pipefail
           cd codex-rs
-          cargo metadata --format-version=1 --no-deps --filter-platform aarch64-linux-android >/dev/null
+          timeout 120 cargo check --target aarch64-linux-android -p codex-cli >/tmp/cargo-check.log 2>&1 || true
           if git diff --quiet -- Cargo.lock; then
-            echo "Cargo metadata did not update Cargo.lock" >&2
+            cat /tmp/cargo-check.log >&2 || true
+            echo "Android dependency resolution did not update Cargo.lock" >&2
             exit 1
           fi
           git diff --check -- Cargo.lock
