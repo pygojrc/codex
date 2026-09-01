@@ -16,6 +16,11 @@ name: rusty-v8-android-release
 # for an upstream android prebuild.
 
 "on":
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/rusty-v8-android-release.yml"
   workflow_dispatch:
     inputs:
       v8_version:
