@@ -118,6 +118,7 @@ async fn check_for_update(
     let info = VersionInfo {
         latest_version,
         last_checked_at: Utc::now(),
+        source: Some("github".to_string()),
         dismissed_version: prev_info.and_then(|p| p.dismissed_version),
     };
 
