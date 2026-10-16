@@ -144,9 +144,14 @@ fn revoke_token_endpoint(codex_home: &Path) -> std::io::Result<String> {
         return Ok(endpoint);
     }
     let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home)?;
-    Ok(endpoints.oauth_revoke_url.or_else(|| {
-        endpoints.oauth_issuer.map(|issuer| format!("{}/oauth/revoke", issuer.trim_end_matches('/')))
-    }).unwrap_or_else(|| REVOKE_TOKEN_URL.to_string()))
+    Ok(endpoints
+        .oauth_revoke_url
+        .or_else(|| {
+            endpoints
+                .oauth_issuer
+                .map(|issuer| format!("{}/oauth/revoke", issuer.trim_end_matches('/')))
+        })
+        .unwrap_or_else(|| REVOKE_TOKEN_URL.to_string()))
 }
 
 fn derive_revoke_token_endpoint(refresh_endpoint: &str) -> Option<String> {

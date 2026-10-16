@@ -42,6 +42,16 @@ The `[ms_endpoints]` entries are `oauth_issuer`, `oauth_token_url`,
 The standalone Unix and PowerShell installers read the quoted
 `ms_endpoints.releases_base_url` entry directly.
 
+### Linux amd64 patch build
+
+Pushing `patch/0.163.0` runs the `patch-linux-amd64` GitHub Actions workflow.
+Its `codex-cli-linux-amd64` artifact contains a `tar.gz` Codex package and
+SHA-256 checksum. Extract the archive and run `bin/codex` from the extracted
+package. Keep the `bin`, `codex-resources`, and `codex-path` directories together:
+the code mode host, Linux sandbox helper, and ripgrep are required at runtime.
+The GNU build targets Ubuntu 24.04 and other compatible Linux amd64 systems;
+the workflow checks that no shared libraries are missing on its runner.
+
 ## Lifecycle hooks
 
 Admins can set top-level `allow_managed_hooks_only = true` in

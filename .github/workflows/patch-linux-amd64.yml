@@ -1,0 +1,105 @@
+name: patch-linux-amd64
+
+on:
+  push:
+    branches:
+      - patch/0.163.0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codex-cli:
+    name: Build and smoke test Codex CLI (Linux amd64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: codex-rs
+    env:
+      CODEX_REPO_ROOT: ${{ github.workspace }}
+      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+      CARGO_BUILD_JOBS: "2"
+      TARGET: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install native build and archive tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            binutils libcap-dev libssl-dev pkg-config zstd
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e081816240890017053eacbb1bdf337761dc5582 # 1.95.0
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Download and verify Codex V8 build artifacts
+        uses: ./.github/actions/setup-rusty-v8
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Build and hash the bundled Linux sandbox helper
+        run: |
+          set -euo pipefail
+          cargo build --locked --release --target "$TARGET" --bin bwrap
+          bwrap="target/${TARGET}/release/bwrap"
+          test -x "$bwrap"
+          strip --strip-debug --strip-unneeded "$bwrap"
+          echo "CODEX_BWRAP_SHA256=$(sha256sum "$bwrap" | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+
+      - name: Build CLI and code mode host with the helper digest
+        run: |
+          set -euo pipefail
+          export STABLE_GIT_COMMIT="$(git rev-parse HEAD)"
+          cargo build --locked --release --target "$TARGET" \
+            --bin codex --bin codex-code-mode-host
+
+      - name: Assemble the complete Codex package
+        run: |
+          set -euo pipefail
+          bash "${GITHUB_WORKSPACE}/.github/scripts/build-codex-package-archive.sh" \
+            --target "$TARGET" --bundle primary \
+            --entrypoint-dir "target/${TARGET}/release" \
+            --archive-dir "dist/${TARGET}"
+
+      - name: Extract and run the packaged CLI
+        run: |
+          set -euo pipefail
+          archive="dist/${TARGET}/codex-package-${TARGET}.tar.gz"
+          test -s "$archive"
+          package="$(mktemp -d)"
+          tar -xzf "$archive" -C "$package"
+          for executable in bin/codex bin/codex-code-mode-host codex-resources/bwrap codex-path/rg; do
+            test -x "${package}/${executable}"
+            if ldd "${package}/${executable}" 2>&1 | grep -q 'not found'; then
+              echo "Missing shared library for ${executable}" >&2
+              exit 1
+            fi
+          done
+          test -s "${package}/codex-package.json"
+          "${package}/bin/codex" --version
+          "${package}/bin/codex" --help >/dev/null
+          "${package}/bin/codex-code-mode-host" --help >/dev/null
+          "${package}/codex-resources/bwrap" --version
+          "${package}/codex-path/rg" --version
+          export CODEX_HOME="$(mktemp -d)"
+          (cd "$package" && ./bin/codex features list >/dev/null)
+          test -s "${CODEX_HOME}/ms-config.toml"
+          grep -Fq '[ms_endpoints]' "${CODEX_HOME}/ms-config.toml"
+          sha256sum "$archive" > "${archive}.sha256"
+
+      - name: Upload runnable CLI package
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: codex-cli-linux-amd64
+          path: |
+            codex-rs/dist/x86_64-unknown-linux-gnu/codex-package-x86_64-unknown-linux-gnu.tar.gz
+            codex-rs/dist/x86_64-unknown-linux-gnu/codex-package-x86_64-unknown-linux-gnu.tar.gz.sha256
+          if-no-files-found: error

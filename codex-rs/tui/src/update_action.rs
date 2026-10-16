@@ -46,17 +46,42 @@ impl UpdateAction {
     /// Returns the list of command-line arguments for invoking the update.
     pub fn command_args(self) -> (&'static str, Vec<String>) {
         match self {
-            UpdateAction::Daemon(source) => ("codex", source.command_args().iter().map(|arg| (*arg).to_string()).collect()),
-            UpdateAction::NpmGlobalLatest => ("npm", vec!["install".into(), "-g".into(), "@openai/codex".into()]),
-            UpdateAction::BunGlobalLatest => ("bun", vec!["install".into(), "-g".into(), "@openai/codex".into()]),
-            UpdateAction::VitePlusGlobalLatest => ("vp", vec!["install".into(), "-g".into(), "@openai/codex".into()]),
-            UpdateAction::PnpmGlobalLatest => ("pnpm", vec!["add".into(), "-g".into(), "@openai/codex".into()]),
-            UpdateAction::BrewUpgrade => ("brew", vec!["upgrade".into(), "--cask".into(), "codex".into()]),
+            UpdateAction::Daemon(source) => (
+                "codex",
+                source
+                    .command_args()
+                    .iter()
+                    .map(|arg| (*arg).to_string())
+                    .collect(),
+            ),
+            UpdateAction::NpmGlobalLatest => (
+                "npm",
+                vec!["install".into(), "-g".into(), "@openai/codex".into()],
+            ),
+            UpdateAction::BunGlobalLatest => (
+                "bun",
+                vec!["install".into(), "-g".into(), "@openai/codex".into()],
+            ),
+            UpdateAction::VitePlusGlobalLatest => (
+                "vp",
+                vec!["install".into(), "-g".into(), "@openai/codex".into()],
+            ),
+            UpdateAction::PnpmGlobalLatest => (
+                "pnpm",
+                vec!["add".into(), "-g".into(), "@openai/codex".into()],
+            ),
+            UpdateAction::BrewUpgrade => (
+                "brew",
+                vec!["upgrade".into(), "--cask".into(), "codex".into()],
+            ),
             UpdateAction::StandaloneUnix => (
                 "sh",
                 vec![
                     "-c".into(),
-                    format!("curl -fsSL {} | CODEX_NON_INTERACTIVE=1 sh", configured_installer_url("https://chatgpt.com/codex/install.sh")),
+                    format!(
+                        "curl -fsSL {} | CODEX_NON_INTERACTIVE=1 sh",
+                        configured_installer_url("https://chatgpt.com/codex/install.sh")
+                    ),
                 ],
             ),
             UpdateAction::StandaloneWindows => (
@@ -65,7 +90,10 @@ impl UpdateAction {
                     "-ExecutionPolicy".into(),
                     "Bypass".into(),
                     "-c".into(),
-                    format!("$env:CODEX_NON_INTERACTIVE=1; irm {} | iex", configured_installer_url("https://chatgpt.com/codex/install.ps1")),
+                    format!(
+                        "$env:CODEX_NON_INTERACTIVE=1; irm {} | iex",
+                        configured_installer_url("https://chatgpt.com/codex/install.ps1")
+                    ),
                 ],
             ),
         }
@@ -171,7 +199,8 @@ mod tests {
                 "sh",
                 vec![
                     "-c".to_string(),
-                    "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh".to_string()
+                    "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh"
+                        .to_string()
                 ],
             )
         );
@@ -183,7 +212,8 @@ mod tests {
                     "-ExecutionPolicy".to_string(),
                     "Bypass".to_string(),
                     "-c".to_string(),
-                    "$env:CODEX_NON_INTERACTIVE=1; irm https://chatgpt.com/codex/install.ps1 | iex".to_string()
+                    "$env:CODEX_NON_INTERACTIVE=1; irm https://chatgpt.com/codex/install.ps1 | iex"
+                        .to_string()
                 ],
             )
         );

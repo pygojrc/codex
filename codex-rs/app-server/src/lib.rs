@@ -863,7 +863,8 @@ pub async fn run_main_with_transport_options(
 
     let (remote_control_accept_handle, remote_control_handle) = start_remote_control(
         RemoteControlStartConfig {
-            remote_control_url: config.config_layer_stack
+            remote_control_url: config
+                .config_layer_stack
                 .ms_endpoint("remote_control_base_url")
                 .unwrap_or_else(|| config.chatgpt_base_url.clone()),
             installation_id: installation_id.clone(),

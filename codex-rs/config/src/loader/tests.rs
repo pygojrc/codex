@@ -656,13 +656,23 @@ async fn ms_config_is_created_once_and_overrides_user_config() -> io::Result<()>
         &[],
         overrides.clone(),
         &crate::NoopThreadConfigLoader,
-    ).await?;
+    )
+    .await?;
     let ms_path = tmp.path().join(MS_CONFIG_TOML_FILE);
     let generated = std::fs::read_to_string(&ms_path)?;
     assert!(generated.contains("# oauth_issuer = \"https://auth.openai.com\""));
-    assert_eq!(initial.effective_config().get("model").and_then(TomlValue::as_str), Some("user-model"));
+    assert_eq!(
+        initial
+            .effective_config()
+            .get("model")
+            .and_then(TomlValue::as_str),
+        Some("user-model")
+    );
 
-    std::fs::write(&ms_path, "model = 'ms-model'\n[ms_endpoints]\ndecisions_url = 'https://decision.example/v1/decisions'\n")?;
+    std::fs::write(
+        &ms_path,
+        "model = 'ms-model'\n[ms_endpoints]\ndecisions_url = 'https://decision.example/v1/decisions'\n",
+    )?;
     let overridden = load_config_layers_state(
         &TestFileSystem,
         tmp.path(),
@@ -670,28 +680,58 @@ async fn ms_config_is_created_once_and_overrides_user_config() -> io::Result<()>
         &[],
         overrides,
         &crate::NoopThreadConfigLoader,
-    ).await?;
-    assert_eq!(overridden.effective_config().get("model").and_then(TomlValue::as_str), Some("ms-model"));
-    assert_eq!(overridden.ms_endpoint("decisions_url").as_deref(), Some("https://decision.example/v1/decisions"));
-    assert_eq!(std::fs::read_to_string(ms_path)?, "model = 'ms-model'\n[ms_endpoints]\ndecisions_url = 'https://decision.example/v1/decisions'\n");
+    )
+    .await?;
+    assert_eq!(
+        overridden
+            .effective_config()
+            .get("model")
+            .and_then(TomlValue::as_str),
+        Some("ms-model")
+    );
+    assert_eq!(
+        overridden.ms_endpoint("decisions_url").as_deref(),
+        Some("https://decision.example/v1/decisions")
+    );
+    assert_eq!(
+        std::fs::read_to_string(ms_path)?,
+        "model = 'ms-model'\n[ms_endpoints]\ndecisions_url = 'https://decision.example/v1/decisions'\n"
+    );
     let session = load_config_layers_state(
         &TestFileSystem,
         tmp.path(),
         None,
-        &[("model".to_string(), TomlValue::String("session-model".to_string()))],
+        &[(
+            "model".to_string(),
+            TomlValue::String("session-model".to_string()),
+        )],
         LoaderOverrides::without_managed_config_for_tests(),
         &crate::NoopThreadConfigLoader,
-    ).await?;
-    assert_eq!(session.effective_config().get("model").and_then(TomlValue::as_str), Some("session-model"));
-    std::fs::write(tmp.path().join(MS_CONFIG_TOML_FILE), "[ms_endpoints]\noauth_token_url = 'http://untrusted.example/token'\n")?;
-    assert!(load_config_layers_state(
-        &TestFileSystem,
-        tmp.path(),
-        None,
-        &[],
-        LoaderOverrides::without_managed_config_for_tests(),
-        &crate::NoopThreadConfigLoader,
-    ).await.is_err());
+    )
+    .await?;
+    assert_eq!(
+        session
+            .effective_config()
+            .get("model")
+            .and_then(TomlValue::as_str),
+        Some("session-model")
+    );
+    std::fs::write(
+        tmp.path().join(MS_CONFIG_TOML_FILE),
+        "[ms_endpoints]\noauth_token_url = 'http://untrusted.example/token'\n",
+    )?;
+    assert!(
+        load_config_layers_state(
+            &TestFileSystem,
+            tmp.path(),
+            None,
+            &[],
+            LoaderOverrides::without_managed_config_for_tests(),
+            &crate::NoopThreadConfigLoader,
+        )
+        .await
+        .is_err()
+    );
     Ok(())
 }
 

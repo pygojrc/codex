@@ -19,9 +19,9 @@ pub use application::load_local_application_requirements;
 
 use self::layer_io::LoadedConfigLayers;
 use crate::CONFIG_TOML_FILE;
-use crate::MS_CONFIG_TOML_FILE;
 use crate::CloudConfigBundleLayers;
 use crate::ConfigLayerSource;
+use crate::MS_CONFIG_TOML_FILE;
 use crate::ProfileV2Name;
 use crate::RequirementsLayerEntry;
 use crate::config_requirements::RequirementSource;
@@ -436,7 +436,8 @@ pub async fn load_config_layers_state(
             Ok(mut file) => {
                 use std::io::Write;
                 #[cfg(windows)]
-                let defaults = include_str!("ms_defaults.toml").replace("install.sh", "install.ps1");
+                let defaults =
+                    include_str!("ms_defaults.toml").replace("install.sh", "install.ps1");
                 #[cfg(not(windows))]
                 let defaults = include_str!("ms_defaults.toml").to_string();
                 if let Err(error) = file.write_all(defaults.as_bytes()) {
@@ -448,7 +449,12 @@ pub async fn load_config_layers_state(
             Err(error) => return Err(error),
         }
         let ms_layer = load_config_toml_for_required_layer(fs, &ms_file, strict_config, |config| {
-            ConfigLayerEntry::new(ConfigLayerSource::MsConfig { file: ms_file.clone() }, config)
+            ConfigLayerEntry::new(
+                ConfigLayerSource::MsConfig {
+                    file: ms_file.clone(),
+                },
+                config,
+            )
         })
         .await?;
         if let Some(endpoints) = ms_layer.config.get("ms_endpoints") {

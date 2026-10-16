@@ -381,8 +381,12 @@ impl CodexAuth {
                     "personal access token auth is missing a personal access token.",
                 ));
             };
-            return Self::from_personal_access_token(personal_access_token, codex_home, auth_route_config)
-                .await;
+            return Self::from_personal_access_token(
+                personal_access_token,
+                codex_home,
+                auth_route_config,
+            )
+            .await;
         }
         if auth_mode == AuthMode::BedrockApiKey {
             let Some(auth) = auth_dot_json.bedrock_api_key else {
@@ -407,7 +411,8 @@ impl CodexAuth {
         }
 
         let storage_mode = auth_dot_json.storage_mode(auth_credentials_store_mode);
-        let client = create_default_auth_client(&refresh_token_endpoint(codex_home)?, auth_route_config)?;
+        let client =
+            create_default_auth_client(&refresh_token_endpoint(codex_home)?, auth_route_config)?;
         let state = ChatgptAuthState {
             auth_dot_json: Arc::new(Mutex::new(Some(auth_dot_json))),
             client,
@@ -1009,7 +1014,9 @@ pub async fn logout_with_revoke(
             None
         }
     };
-    if let Err(err) = revoke_auth_tokens(auth_dot_json.as_ref(), auth_route_config, codex_home).await {
+    if let Err(err) =
+        revoke_auth_tokens(auth_dot_json.as_ref(), auth_route_config, codex_home).await
+    {
         tracing::warn!("failed to revoke auth tokens during logout: {err}");
     }
     logout_all_stores(
@@ -1057,7 +1064,8 @@ pub async fn login_with_access_token(
 ) -> std::io::Result<()> {
     let auth_dot_json = match classify_codex_access_token(access_token) {
         CodexAccessToken::PersonalAccessToken(access_token) => {
-            let auth = PersonalAccessTokenAuth::load(access_token, codex_home, auth_route_config).await?;
+            let auth =
+                PersonalAccessTokenAuth::load(access_token, codex_home, auth_route_config).await?;
             ensure_auth_workspace_allowed(forced_chatgpt_workspace_id, auth.account_id())?;
             AuthDotJson {
                 // Infer PAT auth from the credential field so older Codex builds can still
@@ -1540,7 +1548,9 @@ async fn load_auth(
     {
         return match classify_codex_access_token(&access_token) {
             CodexAccessToken::PersonalAccessToken(access_token) => {
-                let auth = PersonalAccessTokenAuth::load(access_token, codex_home, auth_route_config).await?;
+                let auth =
+                    PersonalAccessTokenAuth::load(access_token, codex_home, auth_route_config)
+                        .await?;
                 ensure_auth_workspace_allowed(forced_chatgpt_workspace_id, auth.account_id())?;
                 Ok(Some(CodexAuth::PersonalAccessToken(auth)))
             }
@@ -1730,9 +1740,14 @@ fn refresh_token_endpoint(codex_home: &Path) -> std::io::Result<String> {
         return Ok(url);
     }
     let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home)?;
-    Ok(endpoints.oauth_token_url.or_else(|| {
-        endpoints.oauth_issuer.map(|issuer| format!("{}/oauth/token", issuer.trim_end_matches('/')))
-    }).unwrap_or_else(|| REFRESH_TOKEN_URL.to_string()))
+    Ok(endpoints
+        .oauth_token_url
+        .or_else(|| {
+            endpoints
+                .oauth_issuer
+                .map(|issuer| format!("{}/oauth/token", issuer.trim_end_matches('/')))
+        })
+        .unwrap_or_else(|| REFRESH_TOKEN_URL.to_string()))
 }
 
 impl AuthDotJson {
@@ -2964,7 +2979,12 @@ impl AuthManager {
         let auth_dot_json = self
             .auth_cached()
             .and_then(|auth| auth.get_current_auth_json());
-        if let Err(err) = revoke_auth_tokens(auth_dot_json.as_ref(), &self.auth_route_config, &self.codex_home).await
+        if let Err(err) = revoke_auth_tokens(
+            auth_dot_json.as_ref(),
+            &self.auth_route_config,
+            &self.codex_home,
+        )
+        .await
         {
             tracing::warn!("failed to revoke auth tokens during logout: {err}");
         }
@@ -3098,7 +3118,8 @@ impl AuthManager {
         refresh_token: String,
     ) -> Result<(), RefreshTokenError> {
         let endpoint = refresh_token_endpoint(&self.codex_home)?;
-        let refresh_response = request_chatgpt_token_refresh(refresh_token, auth.client(), &endpoint).await?;
+        let refresh_response =
+            request_chatgpt_token_refresh(refresh_token, auth.client(), &endpoint).await?;
 
         persist_tokens(
             auth.storage(),

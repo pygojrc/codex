@@ -90,7 +90,10 @@ pub fn sync_openai_plugins_repo(
         codex_home,
         git_binary.as_deref(),
         GITHUB_API_BASE_URL,
-        endpoints.plugins_export_url.as_deref().unwrap_or(CURATED_PLUGINS_BACKUP_ARCHIVE_API_URL),
+        endpoints
+            .plugins_export_url
+            .as_deref()
+            .unwrap_or(CURATED_PLUGINS_BACKUP_ARCHIVE_API_URL),
         &http_client_factory,
     )
 }

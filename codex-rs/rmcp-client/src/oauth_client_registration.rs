@@ -117,9 +117,12 @@ pub(crate) async fn start_authorization(
         // to its self-referential JSON metadata document.
         // https://datatracker.ietf.org/doc/draft-ietf-oauth-client-id-metadata-document/
         let codex_home = codex_utils_home_dir::find_codex_home()?;
-        let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home.as_path())?;
-        let base_url = endpoints.mcp_client_metadata_base_url
-            .as_deref().unwrap_or("https://chatgpt.com/oauth/codex")
+        let endpoints =
+            codex_config::config_toml::MsEndpointsToml::from_home(codex_home.as_path())?;
+        let base_url = endpoints
+            .mcp_client_metadata_base_url
+            .as_deref()
+            .unwrap_or("https://chatgpt.com/oauth/codex")
             .trim_end_matches('/');
         let client_metadata_url = if uses_shared_callback {
             format!("{base_url}/client.json")

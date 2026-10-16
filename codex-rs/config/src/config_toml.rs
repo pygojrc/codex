@@ -637,7 +637,9 @@ impl MsEndpointsToml {
         let file = codex_home.join(crate::MS_CONFIG_TOML_FILE);
         let contents = match std::fs::read_to_string(&file) {
             Ok(contents) => contents,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Self::default()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
             Err(error) => return Err(error),
         };
         let config: toml::Value = toml::from_str(&contents)
@@ -645,7 +647,9 @@ impl MsEndpointsToml {
         let Some(endpoints) = config.get("ms_endpoints") else {
             return Ok(Self::default());
         };
-        let endpoints: Self = endpoints.clone().try_into()
+        let endpoints: Self = endpoints
+            .clone()
+            .try_into()
             .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
         endpoints.validate()?;
         Ok(endpoints)
@@ -658,22 +662,32 @@ impl MsEndpointsToml {
             ("oauth_token_url", &self.oauth_token_url),
             ("oauth_revoke_url", &self.oauth_revoke_url),
             ("auth_accounts_base_url", &self.auth_accounts_base_url),
-            ("agent_identity_jwks_base_url", &self.agent_identity_jwks_base_url),
-            ("realtime_sideband_base_url", &self.realtime_sideband_base_url),
+            (
+                "agent_identity_jwks_base_url",
+                &self.agent_identity_jwks_base_url,
+            ),
+            (
+                "realtime_sideband_base_url",
+                &self.realtime_sideband_base_url,
+            ),
             ("decisions_url", &self.decisions_url),
             ("turn_costs_url", &self.turn_costs_url),
             ("metrics_url", &self.metrics_url),
             ("plugins_export_url", &self.plugins_export_url),
             ("remote_control_base_url", &self.remote_control_base_url),
-            ("mcp_client_metadata_base_url", &self.mcp_client_metadata_base_url),
+            (
+                "mcp_client_metadata_base_url",
+                &self.mcp_client_metadata_base_url,
+            ),
             ("releases_base_url", &self.releases_base_url),
             ("installer_url", &self.installer_url),
         ];
         for (name, value) in entries {
             if let Some(value) = value {
                 if name == "installer_url"
-                    && !value.bytes().all(|byte| byte.is_ascii_alphanumeric()
-                        || b":/._%~-".contains(&byte))
+                    && !value
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || b":/._%~-".contains(&byte))
                 {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidInput,
@@ -695,7 +709,9 @@ impl MsEndpointsToml {
                 {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidInput,
-                        format!("ms_endpoints.{name} must be an HTTPS URL without credentials, query or fragment"),
+                        format!(
+                            "ms_endpoints.{name} must be an HTTPS URL without credentials, query or fragment"
+                        ),
                     ));
                 }
             }

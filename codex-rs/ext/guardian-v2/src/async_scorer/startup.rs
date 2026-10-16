@@ -26,7 +26,10 @@ pub(super) fn decisions_sampler(
     auth_manager: &AuthManager,
 ) -> Option<DecisionsSampler> {
     use codex_http_client::ClientRouteClass;
-    let url = input.config.config_layer_stack.ms_endpoint("decisions_url")
+    let url = input
+        .config
+        .config_layer_stack
+        .ms_endpoint("decisions_url")
         .unwrap_or_else(|| URL.to_owned());
     let result = decisions_api_key(
         &input.config.model_provider_id,

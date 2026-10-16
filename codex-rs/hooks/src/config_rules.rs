@@ -23,7 +23,9 @@ pub fn hook_states_from_stack(
     for layer in config_layer_stack.all_layers_low_to_high() {
         if !matches!(
             layer.name,
-            ConfigLayerSource::User { .. } | ConfigLayerSource::MsConfig { .. } | ConfigLayerSource::SessionFlags
+            ConfigLayerSource::User { .. }
+                | ConfigLayerSource::MsConfig { .. }
+                | ConfigLayerSource::SessionFlags
         ) {
             continue;
         }

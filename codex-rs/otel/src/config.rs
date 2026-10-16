@@ -10,6 +10,23 @@ pub(crate) const STATSIG_OTLP_HTTP_ENDPOINT: &str = "https://ab.chatgpt.com/otlp
 pub(crate) const STATSIG_API_KEY_HEADER: &str = "statsig-api-key";
 pub(crate) const STATSIG_API_KEY: &str = "client-MkRuleRQBd6qakfnDYqJVR9JuXcY57Ljly3vi5JVUIO";
 
+fn configured_metrics_url() -> Option<String> {
+    // Telemetry cannot depend on codex-config: config's dependency graph
+    // already reaches this crate through the Windows sandbox.
+    let home = codex_utils_home_dir::find_codex_home().ok()?;
+    let contents = std::fs::read_to_string(home.join("ms-config.toml")).ok()?;
+    let value: toml::Value = toml::from_str(&contents).ok()?;
+    let endpoint = value.get("ms_endpoints")?.get("metrics_url")?.as_str()?;
+    let url = url::Url::parse(endpoint).ok()?;
+    (url.scheme() == "https"
+        && url.host_str().is_some()
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.query().is_none()
+        && url.fragment().is_none())
+    .then(|| endpoint.to_string())
+}
+
 pub(crate) fn resolve_exporter(exporter: &OtelExporter) -> OtelExporter {
     match exporter {
         OtelExporter::Statsig => {
@@ -22,10 +39,7 @@ pub(crate) fn resolve_exporter(exporter: &OtelExporter) -> OtelExporter {
             }
 
             OtelExporter::OtlpHttp {
-                endpoint: codex_utils_home_dir::find_codex_home()
-                    .ok()
-                    .and_then(|home| codex_config::config_toml::MsEndpointsToml::from_home(home.as_path()).ok())
-                    .and_then(|endpoints| endpoints.metrics_url)
+                endpoint: configured_metrics_url()
                     .unwrap_or_else(|| STATSIG_OTLP_HTTP_ENDPOINT.to_string()),
                 headers: HashMap::from([(
                     STATSIG_API_KEY_HEADER.to_string(),

@@ -59,17 +59,16 @@ pub(crate) fn validate_chatgpt_base_url(
         .as_str()
         .to_ascii_lowercase();
     let trusted_builtin = matches!(
-            authority.as_str(),
-            "chatgpt.com"
-                | "chatgpt.com:443"
-                | "chat.openai.com"
-                | "chat.openai.com:443"
-                | "chatgpt-staging.com"
-                | "chatgpt-staging.com:443"
-        );
-    let trusted_configured = configured_base_url.is_some_and(|configured| {
-        configured.trim_end_matches('/') == input.trim_end_matches('/')
-    });
+        authority.as_str(),
+        "chatgpt.com"
+            | "chatgpt.com:443"
+            | "chat.openai.com"
+            | "chat.openai.com:443"
+            | "chatgpt-staging.com"
+            | "chatgpt-staging.com:443"
+    );
+    let trusted_configured = configured_base_url
+        .is_some_and(|configured| configured.trim_end_matches('/') == input.trim_end_matches('/'));
     if uri.scheme_str() != Some("https")
         || (!trusted_builtin && !trusted_configured)
         || authority.contains('@')
