@@ -93,7 +93,9 @@ jobs:
           (cd "$package" && ./bin/codex features list >/dev/null)
           test -s "${CODEX_HOME}/ms-config.toml"
           grep -Fq '[ms_endpoints]' "${CODEX_HOME}/ms-config.toml"
-          sha256sum "$archive" > "${archive}.sha256"
+          (cd "dist/${TARGET}" && \
+            sha256sum "codex-package-${TARGET}.tar.gz" > "codex-package-${TARGET}.tar.gz.sha256" && \
+            sha256sum -c "codex-package-${TARGET}.tar.gz.sha256")
 
       - name: Upload runnable CLI package
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
