@@ -223,6 +223,7 @@ impl ConfigLayerEntry {
             ConfigLayerSource::System { file } => file.parent(),
             ConfigLayerSource::EnterpriseManaged { .. } => None,
             ConfigLayerSource::User { file, .. } => file.parent(),
+            ConfigLayerSource::MsConfig { file } => file.parent(),
             ConfigLayerSource::Project { dot_codex_folder } => Some(dot_codex_folder.clone()),
             ConfigLayerSource::SessionFlags => None,
             ConfigLayerSource::LegacyManagedConfigTomlFromFile { .. } => None,
@@ -486,19 +487,29 @@ impl ConfigLayerStack {
         })
     }
 
-    /// Returns a new stack with the user layer copied from `other`, preserving
-    /// every non-user layer already present in this stack.
+    /// Returns a new stack with the user and MS layers copied from `other`,
+    /// preserving every other layer already present in this stack.
     pub fn with_user_layer_from(&self, other: &Self) -> Self {
         let user_layers = other
             .layers
             .iter()
-            .filter(|layer| matches!(layer.name, ConfigLayerSource::User { .. }))
+            .filter(|layer| {
+                matches!(
+                    layer.name,
+                    ConfigLayerSource::User { .. } | ConfigLayerSource::MsConfig { .. }
+                )
+            })
             .cloned()
             .collect::<Vec<_>>();
         let mut layers = self
             .layers
             .iter()
-            .filter(|layer| !matches!(layer.name, ConfigLayerSource::User { .. }))
+            .filter(|layer| {
+                !matches!(
+                    layer.name,
+                    ConfigLayerSource::User { .. } | ConfigLayerSource::MsConfig { .. }
+                )
+            })
             .cloned()
             .collect::<Vec<_>>();
         for user_layer in user_layers {
@@ -536,6 +547,15 @@ impl ConfigLayerStack {
             crate::model_provider_requirements::apply(&mut merged, requirements);
         }
         merged
+    }
+
+    /// An independently configured endpoint from the effective MS settings.
+    pub fn ms_endpoint(&self, key: &str) -> Option<String> {
+        self.effective_config()
+            .get("ms_endpoints")?
+            .get(key)?
+            .as_str()
+            .map(str::to_owned)
     }
 
     /// Required provider selection used when building the effective configuration.

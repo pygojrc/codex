@@ -247,6 +247,7 @@ fn config_path_for_layer(layer: &ConfigLayerEntry, config_toml_file: &str) -> Op
         ConfigLayerSource::PackagedDefaults { file } => Some(file.to_path_buf()),
         ConfigLayerSource::System { file } => Some(file.to_path_buf()),
         ConfigLayerSource::User { file, .. } => Some(file.to_path_buf()),
+        ConfigLayerSource::MsConfig { file } => Some(file.to_path_buf()),
         ConfigLayerSource::Project { dot_codex_folder } => {
             Some(dot_codex_folder.as_path().join(config_toml_file))
         }

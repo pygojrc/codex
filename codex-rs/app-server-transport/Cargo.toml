@@ -25,6 +25,7 @@ base64 = { workspace = true }
 codex-api = { workspace = true }
 codex-app-server-protocol = { workspace = true }
 codex-core = { workspace = true }
+codex-config = { workspace = true }
 codex-login = { workspace = true }
 codex-model-provider = { workspace = true }
 codex-protocol = { workspace = true }
@@ -60,7 +61,6 @@ signal-hook = { workspace = true }
 
 [dev-dependencies]
 chrono = { workspace = true }
-codex-config = { workspace = true }
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }

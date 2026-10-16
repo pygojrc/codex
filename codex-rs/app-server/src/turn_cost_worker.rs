@@ -428,10 +428,18 @@ impl WorkerRuntime {
                     &auth,
                     http_client_factory,
                 );
-                client
-                    .query_api_key_turn_costs(turn_ids, &provider.headers)
-                    .await
-                    .map(Some)
+                let costs = if let Some(url) = self
+                    .config
+                    .config_layer_stack
+                    .ms_endpoint("turn_costs_url")
+                {
+                    client
+                        .query_api_key_turn_costs_at(&url, turn_ids, &provider.headers)
+                        .await
+                } else {
+                    client.query_api_key_turn_costs(turn_ids, &provider.headers).await
+                }?;
+                Ok(Some(costs))
             }
             TurnCostBackend::ModelProvider(model_provider) => {
                 let http_client_factory = self.config.http_client_factory().with_network_policy(

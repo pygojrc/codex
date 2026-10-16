@@ -807,6 +807,9 @@ fn override_message(layer: &ConfigLayerSource) -> String {
         ConfigLayerSource::User { file, .. } => {
             format!("Overridden by user config: {}", file.display())
         }
+        ConfigLayerSource::MsConfig { file } => {
+            format!("Overridden by ms-config: {}", file.display())
+        }
         ConfigLayerSource::LegacyManagedConfigTomlFromFile { file } => {
             format!(
                 "Overridden by legacy managed_config.toml: {}",

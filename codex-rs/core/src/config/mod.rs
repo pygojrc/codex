@@ -3304,6 +3304,9 @@ impl Config {
                 "`experimental_thread_store_endpoint` is no longer supported; remove it from config.toml",
             ));
         }
+        if let Some(endpoints) = cfg.ms_endpoints.as_ref() {
+            endpoints.validate()?;
+        }
 
         validate_model_providers(&cfg.model_providers)
             .map_err(|message| std::io::Error::new(std::io::ErrorKind::InvalidInput, message))?;
@@ -4568,7 +4571,12 @@ impl Config {
                 }),
             experimental_realtime_ws_base_url: cfg.experimental_realtime_ws_base_url,
             experimental_realtime_webrtc_call_base_url: cfg
-                .experimental_realtime_webrtc_call_base_url,
+                .experimental_realtime_webrtc_call_base_url
+                .or_else(|| {
+                    cfg.ms_endpoints
+                        .as_ref()
+                        .and_then(|endpoints| endpoints.realtime_sideband_base_url.clone())
+                }),
             experimental_realtime_ws_model: cfg.experimental_realtime_ws_model,
             realtime: cfg
                 .realtime

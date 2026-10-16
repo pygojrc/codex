@@ -50,6 +50,7 @@ mod tui_rendering;
 pub mod types;
 
 pub const CONFIG_TOML_FILE: &str = "config.toml";
+pub const MS_CONFIG_TOML_FILE: &str = "ms-config.toml";
 
 pub use application_requirements::ApplicationNetworkRequirementsToml;
 pub use application_requirements::ApplicationRequirementsToml;

@@ -22,7 +22,11 @@ pub(crate) fn resolve_exporter(exporter: &OtelExporter) -> OtelExporter {
             }
 
             OtelExporter::OtlpHttp {
-                endpoint: STATSIG_OTLP_HTTP_ENDPOINT.to_string(),
+                endpoint: codex_utils_home_dir::find_codex_home()
+                    .ok()
+                    .and_then(|home| codex_config::config_toml::MsEndpointsToml::from_home(home.as_path()).ok())
+                    .and_then(|endpoints| endpoints.metrics_url)
+                    .unwrap_or_else(|| STATSIG_OTLP_HTTP_ENDPOINT.to_string()),
                 headers: HashMap::from([(
                     STATSIG_API_KEY_HEADER.to_string(),
                     STATSIG_API_KEY.to_string(),

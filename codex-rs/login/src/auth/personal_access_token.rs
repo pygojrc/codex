@@ -39,12 +39,15 @@ impl fmt::Debug for PersonalAccessTokenAuth {
 impl PersonalAccessTokenAuth {
     pub(super) async fn load(
         access_token: &str,
+        codex_home: &std::path::Path,
         auth_route_config: &AuthRouteConfig,
     ) -> std::io::Result<Self> {
+        let ms_endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home)?;
         let authapi_base_url = env::var(CODEX_AUTHAPI_BASE_URL_ENV_VAR)
             .ok()
             .map(|base_url| base_url.trim().trim_end_matches('/').to_string())
             .filter(|base_url| !base_url.is_empty())
+            .or(ms_endpoints.auth_accounts_base_url)
             .unwrap_or_else(|| PROD_AUTHAPI_BASE_URL.to_string());
         let endpoint = whoami_endpoint(&authapi_base_url);
         let client = create_default_auth_client(&endpoint, auth_route_config)?;

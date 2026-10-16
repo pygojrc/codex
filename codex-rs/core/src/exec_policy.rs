@@ -667,6 +667,11 @@ pub async fn load_exec_policy(config_stack: &ConfigLayerStack) -> Result<Policy,
     // rules defined in lower-precedence ones.
     let mut policy_paths = Vec::new();
     for layer in config_stack.layers_low_to_high() {
+        // This file shares CODEX_HOME with the normal user layer. Avoid
+        // loading the same rules directory a second time.
+        if matches!(layer.name, ConfigLayerSource::MsConfig { .. }) {
+            continue;
+        }
         if config_stack.ignore_user_and_project_exec_policy_rules()
             && matches!(
                 layer.name,

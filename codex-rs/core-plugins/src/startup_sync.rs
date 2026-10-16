@@ -78,6 +78,8 @@ pub fn sync_openai_plugins_repo(
     codex_home: &Path,
     http_client_factory: HttpClientFactory,
 ) -> Result<String, String> {
+    let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home)
+        .map_err(|error| format!("invalid ms-config.toml: {error}"))?;
     // Keep Git-only egress working without trusting workspace PATH entries.
     let git_binary = codex_utils_path::system_executable("git");
     // Apple's /usr/bin/git is an installer shim when developer tools are absent.
@@ -88,7 +90,7 @@ pub fn sync_openai_plugins_repo(
         codex_home,
         git_binary.as_deref(),
         GITHUB_API_BASE_URL,
-        CURATED_PLUGINS_BACKUP_ARCHIVE_API_URL,
+        endpoints.plugins_export_url.as_deref().unwrap_or(CURATED_PLUGINS_BACKUP_ARCHIVE_API_URL),
         &http_client_factory,
     )
 }

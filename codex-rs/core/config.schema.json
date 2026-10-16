@@ -2934,6 +2934,55 @@
       },
       "type": "object"
     },
+    "MsEndpointsToml": {
+      "additionalProperties": false,
+      "description": "Independently configurable first-party network destinations.",
+      "properties": {
+        "agent_identity_jwks_base_url": {
+          "type": "string"
+        },
+        "auth_accounts_base_url": {
+          "type": "string"
+        },
+        "decisions_url": {
+          "type": "string"
+        },
+        "installer_url": {
+          "type": "string"
+        },
+        "mcp_client_metadata_base_url": {
+          "type": "string"
+        },
+        "metrics_url": {
+          "type": "string"
+        },
+        "oauth_issuer": {
+          "type": "string"
+        },
+        "oauth_revoke_url": {
+          "type": "string"
+        },
+        "oauth_token_url": {
+          "type": "string"
+        },
+        "plugins_export_url": {
+          "type": "string"
+        },
+        "realtime_sideband_base_url": {
+          "type": "string"
+        },
+        "releases_base_url": {
+          "type": "string"
+        },
+        "remote_control_base_url": {
+          "type": "string"
+        },
+        "turn_costs_url": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "MultiAgentV2ConfigToml": {
       "additionalProperties": false,
       "properties": {
@@ -7876,6 +7925,14 @@
         }
       ],
       "description": "Optional verbosity control for GPT-5 models (Responses API `text.verbosity`)."
+    },
+    "ms_endpoints": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/MsEndpointsToml"
+        }
+      ],
+      "description": "Optional independent service endpoints. The ms-config.toml layer can override these without changing model-provider routing."
     },
     "notice": {
       "allOf": [

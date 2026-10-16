@@ -40,10 +40,21 @@ enum WorkloadIdentityEnvironment {
 
 impl WorkloadIdentityEnvironment {
     fn token_url(self) -> Result<Url, WorkloadIdentitySessionError> {
-        Url::parse(match self {
-            Self::Production => PROD_TOKEN_URL,
-            Self::Staging => STAGING_TOKEN_URL,
-        })
+        let endpoint = match self {
+            Self::Production => {
+                let home = codex_utils_home_dir::find_codex_home()
+                    .map_err(|error| invalid_config(error.to_string()))?;
+                let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(home.as_path())
+                    .map_err(|error| invalid_config(error.to_string()))?;
+                endpoints.oauth_token_url.or_else(|| {
+                    endpoints.oauth_issuer.map(|issuer| {
+                        format!("{}/oauth/token", issuer.trim_end_matches('/'))
+                    })
+                }).unwrap_or_else(|| PROD_TOKEN_URL.to_string())
+            }
+            Self::Staging => STAGING_TOKEN_URL.to_string(),
+        };
+        Url::parse(&endpoint)
         .map_err(|_| invalid_config("workload identity token endpoint is invalid"))
     }
 }

@@ -1,0 +1,30 @@
+# Codex MS overrides. Uncomment an entry to override config.toml.
+# This file is created once and is never rewritten on subsequent launches.
+# Domain and endpoint settings are applied when a new session starts.
+
+# Existing config.toml settings:
+# chatgpt_base_url = "https://chatgpt.com/backend-api/"
+# openai_base_url = "https://api.openai.com/v1"
+# experimental_realtime_ws_base_url = "https://api.openai.com/v1"
+# experimental_realtime_webrtc_call_base_url = "https://api.openai.com/v1"
+
+# Independent endpoints used by built-in services:
+# Uncomment the table header and each endpoint you want to change.
+# [ms_endpoints]
+# oauth_issuer = "https://auth.openai.com"
+# oauth_token_url = "https://auth.openai.com/oauth/token"
+# oauth_revoke_url = "https://auth.openai.com/oauth/revoke"
+# auth_accounts_base_url = "https://auth.openai.com/api/accounts"
+# agent_identity_jwks_base_url = "https://chatgpt.com/backend-api"
+# realtime_sideband_base_url = "https://api.openai.com/v1"
+# decisions_url = "https://api.openai.com/v1/decisions"
+# turn_costs_url = "https://api.chatgpt.com/v1/analytics/codex/turn-costs"
+# metrics_url = "https://ab.chatgpt.com/otlp/v1/metrics"
+# plugins_export_url = "https://chatgpt.com/backend-api/plugins/export/curated"
+# remote_control_base_url = "https://chatgpt.com/backend-api"
+# mcp_client_metadata_base_url = "https://chatgpt.com/oauth/codex"
+# releases_base_url = "https://releases.openai.com/codex"
+# installer_url = "https://chatgpt.com/codex/install.sh"
+
+# Other config.toml keys may also be placed here. System/managed requirements
+# and per-session command-line overrides retain their existing precedence.

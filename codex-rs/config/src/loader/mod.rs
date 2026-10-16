@@ -19,6 +19,7 @@ pub use application::load_local_application_requirements;
 
 use self::layer_io::LoadedConfigLayers;
 use crate::CONFIG_TOML_FILE;
+use crate::MS_CONFIG_TOML_FILE;
 use crate::CloudConfigBundleLayers;
 use crate::ConfigLayerSource;
 use crate::ProfileV2Name;
@@ -99,6 +100,7 @@ const PROJECT_LOCAL_CONFIG_DENYLIST: &[&str] = &[
     "experimental_realtime_webrtc_call_base_url",
     "experimental_realtime_ws_base_url",
     "otel",
+    "ms_endpoints",
 ];
 
 async fn first_layer_config_error_from_entries(layers: &[ConfigLayerEntry]) -> Option<ConfigError> {
@@ -132,6 +134,7 @@ async fn first_layer_config_error_from_entries(layers: &[ConfigLayerEntry]) -> O
 /// - cwd       `${PWD}/config.toml` (loaded but disabled when the directory is untrusted)
 /// - tree      parent directories up to root looking for `./.codex/config.toml` (loaded but disabled when untrusted)
 /// - repo      `$(git rev-parse --show-toplevel)/.codex/config.toml` (loaded but disabled when untrusted)
+/// - ms        `${CODEX_HOME}/ms-config.toml`, overrides user and project settings
 /// - runtime   e.g., --config flags, model selector in UI
 ///
 /// (*) Only available on macOS via managed device profiles.
@@ -418,6 +421,47 @@ pub async fn load_config_layers_state(
             && project_layers.layers.is_empty();
         layers.extend(project_layers.layers);
         startup_warnings.extend(project_layers.startup_warnings);
+    }
+
+    // The MS file is owned by the user, never by the repository being opened.
+    // create_new preserves edits and is safe when two Codex processes start at once.
+    if !ignore_user_config {
+        let ms_file = AbsolutePathBuf::resolve_path_against_base(MS_CONFIG_TOML_FILE, codex_home);
+        std::fs::create_dir_all(codex_home)?;
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(ms_file.as_path())
+        {
+            Ok(mut file) => {
+                use std::io::Write;
+                #[cfg(windows)]
+                let defaults = include_str!("ms_defaults.toml").replace("install.sh", "install.ps1");
+                #[cfg(not(windows))]
+                let defaults = include_str!("ms_defaults.toml").to_string();
+                if let Err(error) = file.write_all(defaults.as_bytes()) {
+                    let _ = std::fs::remove_file(ms_file.as_path());
+                    return Err(error);
+                }
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+        let ms_layer = load_config_toml_for_required_layer(fs, &ms_file, strict_config, |config| {
+            ConfigLayerEntry::new(ConfigLayerSource::MsConfig { file: ms_file.clone() }, config)
+        })
+        .await?;
+        if let Some(endpoints) = ms_layer.config.get("ms_endpoints") {
+            let endpoints: crate::config_toml::MsEndpointsToml =
+                endpoints.clone().try_into().map_err(|error| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("{}: {error}", ms_file.display()),
+                    )
+                })?;
+            endpoints.validate()?;
+        }
+        insert_layer_by_precedence(&mut layers, ms_layer);
     }
 
     // Add a layer for runtime overrides from the CLI or UI, if any exist.

@@ -209,6 +209,20 @@ fn is_localhost(host: &Option<Host<&str>>) -> bool {
     }
 }
 
+fn is_configured_remote_control_url(url: &Url) -> bool {
+    let Some(codex_home) = codex_core::config::find_codex_home().ok() else {
+        return false;
+    };
+    let Ok(endpoints) =
+        codex_config::config_toml::MsEndpointsToml::from_home(codex_home.as_path())
+    else {
+        return false;
+    };
+    endpoints.remote_control_base_url.as_deref().is_some_and(|configured| {
+        configured.trim_end_matches('/') == url.as_str().trim_end_matches('/')
+    })
+}
+
 pub(super) fn normalize_remote_control_url(
     remote_control_url: &str,
 ) -> io::Result<RemoteControlTarget> {
@@ -274,6 +288,13 @@ pub(super) fn normalize_remote_control_base_url(remote_control_url: &str) -> io:
     };
 
     let mut remote_control_url = Url::parse(remote_control_url).map_err(map_url_parse_error)?;
+    if !remote_control_url.username().is_empty()
+        || remote_control_url.password().is_some()
+        || remote_control_url.query().is_some()
+        || remote_control_url.fragment().is_some()
+    {
+        return Err(map_scheme_error(()));
+    }
     if !remote_control_url.path().ends_with('/') {
         let normalized_path = format!("{}/", remote_control_url.path());
         remote_control_url.set_path(&normalized_path);
@@ -281,7 +302,8 @@ pub(super) fn normalize_remote_control_base_url(remote_control_url: &str) -> io:
 
     let host = remote_control_url.host();
     match remote_control_url.scheme() {
-        "https" if is_localhost(&host) || is_allowed_remote_control_chatgpt_host(&host) => {}
+        "https" if is_localhost(&host) || is_allowed_remote_control_chatgpt_host(&host)
+            || is_configured_remote_control_url(&remote_control_url) => {}
         "http" if is_localhost(&host) => {}
         _ => return Err(map_scheme_error(())),
     }

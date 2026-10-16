@@ -430,6 +430,10 @@ pub struct ConfigToml {
     /// Base URL override for the built-in `openai` model provider.
     pub openai_base_url: Option<String>,
 
+    /// Optional independent service endpoints. The ms-config.toml layer can
+    /// override these without changing model-provider routing.
+    pub ms_endpoints: Option<MsEndpointsToml>,
+
     /// Machine-local realtime audio device preferences used by realtime voice.
     #[serde(default)]
     pub audio: Option<RealtimeAudioToml>,
@@ -603,6 +607,101 @@ pub enum CircuitBreakAction {
     Default,
     /// Emit the same warning and interruption, with structured error details.
     Strict,
+}
+
+/// Independently configurable first-party network destinations.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, JsonSchema)]
+#[schemars(deny_unknown_fields)]
+pub struct MsEndpointsToml {
+    pub oauth_issuer: Option<String>,
+    pub oauth_token_url: Option<String>,
+    pub oauth_revoke_url: Option<String>,
+    pub auth_accounts_base_url: Option<String>,
+    pub agent_identity_jwks_base_url: Option<String>,
+    pub realtime_sideband_base_url: Option<String>,
+    pub decisions_url: Option<String>,
+    pub turn_costs_url: Option<String>,
+    pub metrics_url: Option<String>,
+    pub plugins_export_url: Option<String>,
+    pub remote_control_base_url: Option<String>,
+    pub mcp_client_metadata_base_url: Option<String>,
+    pub releases_base_url: Option<String>,
+    pub installer_url: Option<String>,
+}
+
+impl MsEndpointsToml {
+    /// Read only the independent endpoints, without pulling in other config keys.
+    /// Components started before the main config loader can use this with their
+    /// already resolved CODEX_HOME path.
+    pub fn from_home(codex_home: &Path) -> std::io::Result<Self> {
+        let file = codex_home.join(crate::MS_CONFIG_TOML_FILE);
+        let contents = match std::fs::read_to_string(&file) {
+            Ok(contents) => contents,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Self::default()),
+            Err(error) => return Err(error),
+        };
+        let config: toml::Value = toml::from_str(&contents)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+        let Some(endpoints) = config.get("ms_endpoints") else {
+            return Ok(Self::default());
+        };
+        let endpoints: Self = endpoints.clone().try_into()
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+        endpoints.validate()?;
+        Ok(endpoints)
+    }
+
+    /// Reject ambiguous or insecure destinations before credentials are sent.
+    pub fn validate(&self) -> std::io::Result<()> {
+        let entries = [
+            ("oauth_issuer", &self.oauth_issuer),
+            ("oauth_token_url", &self.oauth_token_url),
+            ("oauth_revoke_url", &self.oauth_revoke_url),
+            ("auth_accounts_base_url", &self.auth_accounts_base_url),
+            ("agent_identity_jwks_base_url", &self.agent_identity_jwks_base_url),
+            ("realtime_sideband_base_url", &self.realtime_sideband_base_url),
+            ("decisions_url", &self.decisions_url),
+            ("turn_costs_url", &self.turn_costs_url),
+            ("metrics_url", &self.metrics_url),
+            ("plugins_export_url", &self.plugins_export_url),
+            ("remote_control_base_url", &self.remote_control_base_url),
+            ("mcp_client_metadata_base_url", &self.mcp_client_metadata_base_url),
+            ("releases_base_url", &self.releases_base_url),
+            ("installer_url", &self.installer_url),
+        ];
+        for (name, value) in entries {
+            if let Some(value) = value {
+                if name == "installer_url"
+                    && !value.bytes().all(|byte| byte.is_ascii_alphanumeric()
+                        || b":/._%~-".contains(&byte))
+                {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "ms_endpoints.installer_url contains characters unsafe for an update command",
+                    ));
+                }
+                let parsed = url::Url::parse(value).map_err(|error| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("ms_endpoints.{name}: {error}"),
+                    )
+                })?;
+                if parsed.scheme() != "https"
+                    || parsed.host_str().is_none()
+                    || !parsed.username().is_empty()
+                    || parsed.password().is_some()
+                    || parsed.query().is_some()
+                    || parsed.fragment().is_some()
+                {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("ms_endpoints.{name} must be an HTTPS URL without credentials, query or fragment"),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, JsonSchema)]

@@ -85,6 +85,11 @@ pub enum ConfigLayerSource {
         profile: Option<String>,
     },
 
+    /// Overrides loaded from $CODEX_HOME/ms-config.toml.
+    #[serde(rename_all = "camelCase")]
+    #[ts(rename_all = "camelCase")]
+    MsConfig { file: AbsolutePathBuf },
+
     /// Path to a .codex/ folder within a project. There could be multiple of
     /// these between `cwd` and the project/repo root.
     #[serde(rename_all = "camelCase")]
@@ -126,6 +131,7 @@ impl ConfigLayerSource {
                 }
             }
             ConfigLayerSource::Project { .. } => 25,
+            ConfigLayerSource::MsConfig { .. } => 27,
             ConfigLayerSource::SessionFlags => 30,
             ConfigLayerSource::LegacyManagedConfigTomlFromFile { .. } => 40,
             ConfigLayerSource::LegacyManagedConfigTomlFromMdm => 50,

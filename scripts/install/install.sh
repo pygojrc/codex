@@ -17,6 +17,33 @@ BIN_DIR="${CODEX_INSTALL_DIR:-$HOME/.local/bin}"
 BIN_PATH="$BIN_DIR/codex"
 CODE_MODE_HOST_BIN_PATH="$BIN_DIR/codex-code-mode-host"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+# The standalone installer runs before the Rust config loader is available.
+# Read the simple, quoted URL entry from the same user-owned MS file.
+if [ -f "$CODEX_HOME_DIR/ms-config.toml" ]; then
+  ms_releases_url="$(awk '
+    /^\[ms_endpoints\][[:space:]]*$/ { in_endpoints=1; next }
+    /^\[/ { in_endpoints=0 }
+    in_endpoints && /^[[:space:]]*releases_base_url[[:space:]]*=/ {
+      sub(/^[[:space:]]*releases_base_url[[:space:]]*=[[:space:]]*/, "")
+      if (/^"[^"]+"[[:space:]]*$/ || /^\047[^\047]+\047[[:space:]]*$/) {
+        gsub(/^["\047]|["\047][[:space:]]*$/, "")
+        print
+        exit
+      }
+    }
+  ' "$CODEX_HOME_DIR/ms-config.toml")"
+  if [ -n "$ms_releases_url" ]; then
+    case "$ms_releases_url" in
+      https://*) ;;
+      *) echo "ms_endpoints.releases_base_url must use HTTPS" >&2; exit 1 ;;
+    esac
+    case "$ms_releases_url" in
+      *'@'*|*'?'*|*'#'*|*[!a-zA-Z0-9_./:%~-]*)
+        echo "ms_endpoints.releases_base_url contains unsupported URL characters" >&2; exit 1 ;;
+    esac
+    RELEASES_BASE_URL="${ms_releases_url%/}"
+  fi
+fi
 STANDALONE_ROOT="$CODEX_HOME_DIR/packages/standalone"
 if [ "$DAEMON_ONLY" = "1" ]; then
   STANDALONE_ROOT="$CODEX_HOME_DIR/packages/app-server-daemon"
@@ -398,7 +425,7 @@ resolve_release_from_releases() {
     return 1
   fi
 
-  if ! parse_downloaded_release_metadata "$requested_release" "releases.openai.com"; then
+  if ! parse_downloaded_release_metadata "$requested_release" "$RELEASES_BASE_URL"; then
     return 1
   fi
   if ! resolve_metadata_version; then
@@ -422,7 +449,7 @@ resolve_release() {
         select_release_assets; then
         return
       fi
-      warn "releases.openai.com is unavailable; falling back to GitHub Releases."
+      warn "$RELEASES_BASE_URL is unavailable; falling back to GitHub Releases."
       ;;
   esac
 

@@ -22,6 +22,7 @@ pub(crate) fn config_layer_source_to_api(source: ConfigLayerSource) -> ApiConfig
             ApiConfigLayerSource::EnterpriseManaged { id, name }
         }
         ConfigLayerSource::User { file, profile } => ApiConfigLayerSource::User { file, profile },
+        ConfigLayerSource::MsConfig { file } => ApiConfigLayerSource::MsConfig { file },
         ConfigLayerSource::Project { dot_codex_folder } => {
             ApiConfigLayerSource::Project { dot_codex_folder }
         }

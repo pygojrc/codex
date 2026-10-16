@@ -384,12 +384,11 @@ fn is_trusted_chatgpt_mcp_server(
 
     url::Url::parse(chatgpt_base_url)
         .ok()
-        .is_some_and(|staging_url| {
-            staging_url.scheme() == "https"
-                && staging_url.domain().is_some_and(|host| {
-                    host == "chatgpt-staging.com" || host.ends_with(".chatgpt-staging.com")
-                })
-                && server_url.origin() == staging_url.origin()
+        .is_some_and(|configured_url| {
+            configured_url.scheme() == "https"
+                && configured_url.username().is_empty()
+                && configured_url.password().is_none()
+                && server_url.origin() == configured_url.origin()
         })
 }
 

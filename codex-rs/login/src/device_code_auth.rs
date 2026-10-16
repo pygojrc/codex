@@ -163,7 +163,8 @@ fn print_device_code_prompt(verification_url: &str, code: &str) {
 }
 
 pub async fn request_device_code(opts: &ServerOptions) -> std::io::Result<DeviceCode> {
-    let base_url = opts.issuer.trim_end_matches('/');
+    let issuer = opts.effective_issuer()?;
+    let base_url = issuer.trim_end_matches('/');
     let api_base_url = format!("{base_url}/api/accounts");
     let client = create_raw_auth_client(
         &format!("{api_base_url}/deviceauth/usercode"),
@@ -183,7 +184,8 @@ pub async fn complete_device_code_login(
     opts: ServerOptions,
     device_code: DeviceCode,
 ) -> std::io::Result<()> {
-    let base_url = opts.issuer.trim_end_matches('/');
+    let issuer = opts.effective_issuer()?;
+    let base_url = issuer.trim_end_matches('/');
     let api_base_url = format!("{base_url}/api/accounts");
     let client = create_raw_auth_client(
         &format!("{api_base_url}/deviceauth/token"),
@@ -207,6 +209,7 @@ pub async fn complete_device_code_login(
 
     let (tokens, _) = crate::server::exchange_code_for_tokens(
         base_url,
+        &opts.codex_home,
         &opts.client_id,
         &redirect_uri,
         &pkce,

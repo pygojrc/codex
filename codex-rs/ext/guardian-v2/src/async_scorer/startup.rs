@@ -26,6 +26,8 @@ pub(super) fn decisions_sampler(
     auth_manager: &AuthManager,
 ) -> Option<DecisionsSampler> {
     use codex_http_client::ClientRouteClass;
+    let url = input.config.config_layer_stack.ms_endpoint("decisions_url")
+        .unwrap_or_else(|| URL.to_owned());
     let result = decisions_api_key(
         &input.config.model_provider_id,
         input.config.model_provider.base_url.as_deref(),
@@ -35,9 +37,9 @@ pub(super) fn decisions_sampler(
         let client = input
             .config
             .http_client_factory()
-            .build_client_without_request_logging(URL, ClientRouteClass::Api)
+            .build_client_without_request_logging(&url, ClientRouteClass::Api)
             .map_err(|_| DecisionsError::ClientSetup)?;
-        DecisionsSampler::new(client, key, URL.to_owned())
+        DecisionsSampler::new(client, key, url)
     });
     match result {
         Ok(sampler) => Some(sampler),

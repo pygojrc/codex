@@ -51,9 +51,10 @@ async fn init_backend(user_agent_suffix: &str) -> anyhow::Result<BackendContext>
         std::env::var("CODEX_CLOUD_TASKS_MODE").ok().as_deref(),
         Some("mock") | Some("MOCK")
     );
+    let configured = codex_core::config::Config::load_with_cli_overrides(Vec::new()).await?;
     let base_url = std::env::var("CODEX_CLOUD_TASKS_BASE_URL")
-        .unwrap_or_else(|_| "https://chatgpt.com/backend-api".to_string());
-    let base_url = util::validate_chatgpt_base_url(&base_url)?;
+        .unwrap_or_else(|_| configured.chatgpt_base_url.clone());
+    let base_url = util::validate_chatgpt_base_url(&base_url, Some(&configured.chatgpt_base_url))?;
 
     set_user_agent_suffix(user_agent_suffix);
 

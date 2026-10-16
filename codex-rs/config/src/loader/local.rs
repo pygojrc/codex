@@ -12,6 +12,7 @@ use super::requirements_layers_from_legacy_scheme;
 use super::system_config_toml_file_with_overrides;
 use super::system_requirements_toml_file_with_overrides;
 use crate::CONFIG_TOML_FILE;
+use crate::MS_CONFIG_TOML_FILE;
 use crate::ConfigLayerSource;
 use crate::LoaderOverrides;
 use crate::RequirementSource;
@@ -199,6 +200,16 @@ pub(super) async fn load_local_config_layers_with_overrides(
         },
     ];
     append_project_layers(fs, &mut config_layers, project_layers.layers).await?;
+
+    if !overrides.ignore_user_config {
+        let ms_file = codex_home.join(MS_CONFIG_TOML_FILE);
+        let ms = load_config_toml_for_required_layer_raw(fs, &ms_file, false).await?;
+        config_layers.push(LocalTomlLayer {
+            source: ConfigLayerSource::MsConfig { file: ms_file },
+            base_dir: ms.base_dir,
+            toml: ms.toml,
+        });
+    }
 
     append_legacy_config_layers(&mut config_layers, loaded_managed, &codex_home)?;
 

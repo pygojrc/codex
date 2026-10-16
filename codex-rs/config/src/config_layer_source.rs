@@ -17,6 +17,8 @@ pub enum ConfigLayerSource {
         file: AbsolutePathBuf,
         profile: Option<String>,
     },
+    /// User-owned overrides from `${CODEX_HOME}/ms-config.toml`.
+    MsConfig { file: AbsolutePathBuf },
     /// Configuration loaded from a project's `.codex` directory.
     Project { dot_codex_folder: AbsolutePathBuf },
     /// Overrides supplied for the current session.
@@ -44,6 +46,7 @@ impl ConfigLayerSource {
                 }
             }
             ConfigLayerSource::Project { .. } => 25,
+            ConfigLayerSource::MsConfig { .. } => 27,
             ConfigLayerSource::SessionFlags => 30,
             ConfigLayerSource::LegacyManagedConfigTomlFromFile { .. } => 40,
             ConfigLayerSource::LegacyManagedConfigTomlFromMdm => 50,
@@ -91,6 +94,9 @@ pub fn format_config_layer_source(source: &ConfigLayerSource, config_toml_file: 
         }
         ConfigLayerSource::User { file, .. } => {
             format!("user ({})", file.as_path().display())
+        }
+        ConfigLayerSource::MsConfig { file } => {
+            format!("ms-config ({})", file.as_path().display())
         }
         ConfigLayerSource::Project { dot_codex_folder } => {
             format!(

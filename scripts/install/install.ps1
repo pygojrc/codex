@@ -19,6 +19,25 @@ $PreferReleasesOpenAICom = if ([string]::IsNullOrWhiteSpace($env:CODEX_INSTALLER
     $env:CODEX_INSTALLER_USE_RELEASES_OPENAI_COM -match "^(?i:1|true|yes)$"
 }
 $ReleasesBaseUri = "https://releases.openai.com/codex"
+$MsHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $HOME ".codex" } else { $env:CODEX_HOME }
+$MsConfigPath = Join-Path $MsHome "ms-config.toml"
+if (Test-Path -LiteralPath $MsConfigPath) {
+    $inMsEndpoints = $false
+    foreach ($line in [System.IO.File]::ReadLines($MsConfigPath)) {
+        if ($line -match '^\s*\[ms_endpoints\]\s*$') { $inMsEndpoints = $true; continue }
+        if ($line -match '^\s*\[') { $inMsEndpoints = $false }
+        if ($inMsEndpoints -and $line -match '^\s*releases_base_url\s*=\s*["'']([^"'']+)["'']\s*$') {
+            $candidate = $Matches[1]
+            $parsed = $null
+            if (-not [System.Uri]::TryCreate($candidate, [System.UriKind]::Absolute, [ref]$parsed) -or
+                $parsed.Scheme -ne 'https' -or $parsed.UserInfo -or $parsed.Query -or $parsed.Fragment) {
+                throw "ms_endpoints.releases_base_url must be an HTTPS URL without credentials, query or fragment"
+            }
+            $ReleasesBaseUri = $candidate.TrimEnd('/')
+            break
+        }
+    }
+}
 $ReleasesMetadataTimeoutSec = 30
 $ReleasesAssetTimeoutSec = 300
 
@@ -408,7 +427,7 @@ function Resolve-Release {
         if ($null -ne $release) {
             return $release
         }
-        Write-WarningStep "releases.openai.com is unavailable; falling back to GitHub Releases."
+        Write-WarningStep "$ReleasesBaseUri is unavailable; falling back to GitHub Releases."
     }
 
     return Resolve-ReleaseFromGitHub -NormalizedVersion $normalizedVersion

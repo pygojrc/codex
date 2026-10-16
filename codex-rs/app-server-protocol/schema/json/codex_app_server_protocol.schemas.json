@@ -9867,6 +9867,27 @@
             "type": "object"
           },
           {
+            "description": "Overrides loaded from $CODEX_HOME/ms-config.toml.",
+            "properties": {
+              "file": {
+                "$ref": "#/definitions/AbsolutePathBuf"
+              },
+              "type": {
+                "enum": [
+                  "msConfig"
+                ],
+                "title": "MsConfigConfigLayerSourceType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "file",
+              "type"
+            ],
+            "title": "MsConfigConfigLayerSource",
+            "type": "object"
+          },
+          {
             "description": "Path to a .codex/ folder within a project. There could be multiple of these between `cwd` and the project/repo root.",
             "properties": {
               "dotCodexFolder": {

@@ -5,6 +5,7 @@
 //! available, and callers still remove local auth if the revoke request fails.
 
 use serde::Serialize;
+use std::path::Path;
 use std::time::Duration;
 
 use codex_http_client::HttpClient;
@@ -55,12 +56,13 @@ struct RevokeTokenRequest<'a> {
 pub(super) async fn revoke_auth_tokens(
     auth_dot_json: Option<&AuthDotJson>,
     auth_route_config: &AuthRouteConfig,
+    codex_home: &Path,
 ) -> Result<(), std::io::Error> {
     let Some((token, kind)) = auth_dot_json.and_then(revocable_token) else {
         return Ok(());
     };
 
-    let endpoint = revoke_token_endpoint();
+    let endpoint = revoke_token_endpoint(codex_home)?;
     let client = create_default_auth_client(&endpoint, auth_route_config)?;
     revoke_oauth_token(&client, endpoint.as_str(), token, kind, REVOKE_HTTP_TIMEOUT).await
 }
@@ -131,18 +133,20 @@ async fn revoke_oauth_token(
     )))
 }
 
-fn revoke_token_endpoint() -> String {
+fn revoke_token_endpoint(codex_home: &Path) -> std::io::Result<String> {
     if let Ok(endpoint) = std::env::var(REVOKE_TOKEN_URL_OVERRIDE_ENV_VAR) {
-        return endpoint;
+        return Ok(endpoint);
     }
 
     if let Ok(refresh_endpoint) = std::env::var(REFRESH_TOKEN_URL_OVERRIDE_ENV_VAR)
         && let Some(endpoint) = derive_revoke_token_endpoint(&refresh_endpoint)
     {
-        return endpoint;
+        return Ok(endpoint);
     }
-
-    REVOKE_TOKEN_URL.to_string()
+    let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home)?;
+    Ok(endpoints.oauth_revoke_url.or_else(|| {
+        endpoints.oauth_issuer.map(|issuer| format!("{}/oauth/revoke", issuer.trim_end_matches('/')))
+    }).unwrap_or_else(|| REVOKE_TOKEN_URL.to_string()))
 }
 
 fn derive_revoke_token_endpoint(refresh_endpoint: &str) -> Option<String> {

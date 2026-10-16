@@ -101,6 +101,18 @@ pub struct ServerOptions {
 }
 
 impl ServerOptions {
+    pub(crate) fn effective_issuer(&self) -> io::Result<String> {
+        if self.issuer != DEFAULT_ISSUER {
+            return Ok(self.issuer.clone());
+        }
+        let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(&self.codex_home)?;
+        Ok(endpoints
+            .oauth_issuer
+            .unwrap_or_else(|| self.issuer.clone())
+            .trim_end_matches('/')
+            .to_string())
+    }
+
     /// Creates a server configuration with the default issuer and port.
     pub fn new(
         codex_home: PathBuf,
@@ -175,7 +187,8 @@ impl ShutdownHandle {
 }
 
 /// Starts a local callback server and returns the browser auth URL.
-pub fn run_login_server(opts: ServerOptions) -> io::Result<LoginServer> {
+pub fn run_login_server(mut opts: ServerOptions) -> io::Result<LoginServer> {
+    opts.issuer = opts.effective_issuer()?;
     let pkce = generate_pkce();
     let state = opts.force_state.clone().unwrap_or_else(generate_state);
 
@@ -418,6 +431,7 @@ async fn process_request(
 
             match exchange_code_for_tokens(
                 &opts.issuer,
+                &opts.codex_home,
                 &opts.client_id,
                 redirect_uri,
                 pkce,
@@ -710,13 +724,16 @@ pub(crate) struct ExchangedTokens {
 /// callback-layer `%err` string.
 pub(crate) async fn exchange_code_for_tokens(
     issuer: &str,
+    codex_home: &Path,
     client_id: &str,
     redirect_uri: &str,
     pkce: &PkceCodes,
     code: &str,
     auth_route_config: &AuthRouteConfig,
 ) -> io::Result<(ExchangedTokens, HttpClient)> {
-    let token_endpoint = format!("{}/oauth/token", issuer.trim_end_matches('/'));
+    let token_endpoint = codex_config::config_toml::MsEndpointsToml::from_home(codex_home)?
+        .oauth_token_url
+        .unwrap_or_else(|| format!("{}/oauth/token", issuer.trim_end_matches('/')));
     let factory = auth_route_config.authentication_factory(&token_endpoint);
     let allows_fallback = factory.allows_system_proxy_fallback();
     let redirect_observed = Arc::new(AtomicBool::new(false));

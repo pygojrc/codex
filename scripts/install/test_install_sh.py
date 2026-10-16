@@ -17,6 +17,22 @@ MISMATCH_VERSION = "0.145.0"
 
 
 class InstallShTest(unittest.TestCase):
+    def test_ms_config_changes_release_mirror(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_home = root / "codex-home"
+            config_home.mkdir()
+            (config_home / "ms-config.toml").write_text(
+                "[ms_endpoints]\nreleases_base_url = 'https://mirror.example/codex'\n"
+            )
+            _, requests = run_installer_in(
+                root, VERSION, use_mirror=None, metadata_failure=True
+            )
+            self.assertEqual(
+                requests[0],
+                f"https://mirror.example/codex/releases/{VERSION}/release.json",
+            )
+
     def test_metadata_fetch_failure_is_not_reported_as_missing_assets(self) -> None:
         result, requests = run_installer(VERSION, metadata_failure=True)
 

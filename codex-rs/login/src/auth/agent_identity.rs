@@ -36,6 +36,11 @@ fn agent_identity_endpoint_override(environment_variable: &str) -> Option<String
         .filter(|base_url| !base_url.is_empty())
 }
 
+fn ms_agent_identity_endpoints() -> std::io::Result<codex_config::config_toml::MsEndpointsToml> {
+    let codex_home = codex_utils_home_dir::find_codex_home()?;
+    codex_config::config_toml::MsEndpointsToml::from_home(codex_home.as_path())
+}
+
 fn agent_identity_jwks_base_url_matches(chatgpt_base_url: &str, jwks_base_url: &str) -> bool {
     chatgpt_base_url.trim().trim_end_matches('/') == jwks_base_url
 }
@@ -43,14 +48,17 @@ fn agent_identity_jwks_base_url_matches(chatgpt_base_url: &str, jwks_base_url: &
 pub(super) fn agent_identity_authapi_base_url(
     chatgpt_base_url: Option<&str>,
 ) -> std::io::Result<String> {
+    let ms_endpoints = ms_agent_identity_endpoints()?;
     let environment = match chatgpt_base_url {
         Some(chatgpt_base_url) => ChatGptEnvironment::from_chatgpt_base_url(chatgpt_base_url),
         None => Ok(ChatGptEnvironment::default()),
     };
     let authapi_base_url =
-        agent_identity_endpoint_override(CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL_ENV_VAR);
+        agent_identity_endpoint_override(CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL_ENV_VAR)
+            .or(ms_endpoints.auth_accounts_base_url);
     let jwks_base_url =
-        agent_identity_endpoint_override(CODEX_AGENT_IDENTITY_JWKS_BASE_URL_ENV_VAR);
+        agent_identity_endpoint_override(CODEX_AGENT_IDENTITY_JWKS_BASE_URL_ENV_VAR)
+            .or(ms_endpoints.agent_identity_jwks_base_url);
 
     match (environment, authapi_base_url) {
         (Ok(_), Some(base_url)) => Ok(base_url),
@@ -256,8 +264,11 @@ pub(super) async fn verified_record_from_jwt(
     auth_route_config: &AuthRouteConfig,
 ) -> std::io::Result<AgentIdentityAuthRecord> {
     AgentIdentityAuthRecord::from_agent_identity_jwt(jwt)?;
+    let ms_endpoints = ms_agent_identity_endpoints()?;
     let jwks_base_url =
-        match agent_identity_endpoint_override(CODEX_AGENT_IDENTITY_JWKS_BASE_URL_ENV_VAR) {
+        match agent_identity_endpoint_override(CODEX_AGENT_IDENTITY_JWKS_BASE_URL_ENV_VAR)
+            .or(ms_endpoints.agent_identity_jwks_base_url)
+        {
             Some(base_url) => {
                 if !agent_identity_jwks_base_url_matches(chatgpt_base_url, &base_url) {
                     ChatGptEnvironment::from_chatgpt_base_url(chatgpt_base_url)

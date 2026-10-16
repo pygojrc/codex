@@ -737,7 +737,10 @@ async fn cancel_installer(child: &mut tokio::process::Child, package_root: &Path
 }
 
 async fn fetch_installer_script(http: &impl InstallerHttp) -> Result<Vec<u8>> {
-    match http.get(INSTALL_URL).await? {
+    let codex_home = codex_utils_home_dir::find_codex_home()?;
+    let endpoints = codex_config::config_toml::MsEndpointsToml::from_home(codex_home.as_path())?;
+    let install_url = endpoints.installer_url.as_deref().unwrap_or(INSTALL_URL);
+    match http.get(install_url).await? {
         InstallerResponse::Success(body) => Ok(body),
         InstallerResponse::Unsuccessful { status } => {
             anyhow::bail!("standalone Codex updater request failed with status {status}")
